@@ -1,0 +1,180 @@
+import 'package:flutter/material.dart';
+import '../models/question.dart';
+
+class QuestionForm extends StatefulWidget {
+  final Map<String, dynamic> initialData;
+  final Function(Map<String, dynamic>) onChanged;
+  final VoidCallback onRemove;
+
+  const QuestionForm({
+    super.key,
+    required this.initialData,
+    required this.onChanged,
+    required this.onRemove,
+  });
+
+  @override
+  State<QuestionForm> createState() => _QuestionFormState();
+}
+
+class _QuestionFormState extends State<QuestionForm> {
+  late TextEditingController _questionController;
+  late QuestionType _questionType;
+  late List<TextEditingController> _optionControllers;
+  
+  @override
+  void initState() {
+    super.initState();
+    _questionController = TextEditingController(text: widget.initialData['text']);
+    _questionType = widget.initialData['type'] ?? QuestionType.multipleChoice;
+    _optionControllers = (widget.initialData['options'] as List<dynamic>? ?? [])
+        .map((option) => TextEditingController(text: option.toString()))
+        .toList();
+    
+    if (_optionControllers.isEmpty && _questionType == QuestionType.multipleChoice) {
+      _optionControllers = [TextEditingController(), TextEditingController()];
+    }
+  }
+  
+  @override
+  void dispose() {
+    _questionController.dispose();
+    for (var controller in _optionControllers) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+  
+  void _notifyChange() {
+    final data = {
+      'text': _questionController.text,
+      'type': _questionType,
+      'options': _optionControllers.map((c) => c.text).toList(),
+    };
+    widget.onChanged(data);
+  }
+  
+  void _addOption() {
+    setState(() {
+      _optionControllers.add(TextEditingController());
+    });
+    _notifyChange();
+  }
+  
+  void _removeOption(int index) {
+    setState(() {
+      _optionControllers[index].dispose();
+      _optionControllers.removeAt(index);
+    });
+    _notifyChange();
+  }
+  
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: TextFormField(
+                    controller: _questionController,
+                    decoration: const InputDecoration(
+                      labelText: 'Question',
+                      border: OutlineInputBorder(),
+                    ),
+                    onChanged: (_) => _notifyChange(),
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Please enter a question';
+                      }
+                      return null;
+                    },
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete),
+                  onPressed: widget.onRemove,
+                  color: Colors.red,
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            DropdownButtonFormField<QuestionType>(
+              value: _questionType,
+              decoration: const InputDecoration(
+                labelText: 'Question Type',
+                border: OutlineInputBorder(),
+              ),
+              items: const [
+                DropdownMenuItem(
+                  value: QuestionType.multipleChoice,
+                  child: Text('Multiple Choice'),
+                ),
+                DropdownMenuItem(
+                  value: QuestionType.wordCloud,
+                  child: Text('Word Cloud'),
+                ),
+              ],
+              onChanged: (value) {
+                setState(() {
+                  _questionType = value!;
+                });
+                _notifyChange();
+              },
+            ),
+            if (_questionType == QuestionType.multipleChoice) ...[
+              const SizedBox(height: 16),
+              const Text(
+                'Options',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              ...List.generate(_optionControllers.length, (index) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: TextFormField(
+                          controller: _optionControllers[index],
+                          decoration: InputDecoration(
+                            labelText: 'Option ${index + 1}',
+                            border: const OutlineInputBorder(),
+                          ),
+                          onChanged: (_) => _notifyChange(),
+                          validator: (value) {
+                            if (_questionType == QuestionType.multipleChoice && 
+                                (value == null || value.trim().isEmpty)) {
+                              return 'Please enter an option';
+                            }
+                            return null;
+                          },
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.remove_circle),
+                        onPressed: _optionControllers.length > 2
+                            ? () => _removeOption(index)
+                            : null,
+                        color: Colors.red,
+                      ),
+                    ],
+                  ),
+                );
+              }),
+              TextButton.icon(
+                onPressed: _addOption,
+                icon: const Icon(Icons.add),
+                label: const Text('Add Option'),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+} 
