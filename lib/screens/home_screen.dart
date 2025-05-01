@@ -107,6 +107,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         foregroundColor: Colors.white,
         actions: [
           IconButton(
+            icon: const Icon(Icons.login),
+            onPressed: () => context.go('/join'),
+            tooltip: 'Join Quiz',
+          ),
+          IconButton(
             icon: const Icon(Icons.logout),
             onPressed: _logout,
             tooltip: 'Logout',
@@ -122,17 +127,61 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           labelColor: Colors.white,
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
+      body: Stack(
         children: [
-          _buildQuizList(),
-          _buildQuizList(),
+          TabBarView(
+            controller: _tabController,
+            children: [
+              _buildQuizList(),
+              _buildQuizList(),
+            ],
+          ),
+          if (_tabController.index == 1)
+            Positioned(
+              bottom: 80,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: _buildJoinQuizButton(),
+              ),
+            ),
         ],
       ),
-      floatingActionButton: _tabController.index == 0 ? FloatingActionButton(
-        onPressed: () => context.go('/create'),
-        child: const Icon(Icons.add),
-      ) : null,
+      floatingActionButton: _tabController.index == 0 
+          ? FloatingActionButton(
+              onPressed: () => context.go('/create'),
+              tooltip: 'Create Quiz',
+              child: const Icon(Icons.add),
+            )
+          : FloatingActionButton(
+              onPressed: () => context.go('/join'),
+              tooltip: 'Join with Code',
+              backgroundColor: Colors.amber,
+              child: const Icon(Icons.keyboard),
+            ),
+    );
+  }
+  
+  Widget _buildJoinQuizButton() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 50),
+      child: ElevatedButton(
+        onPressed: () => context.go('/join'),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.amber.shade700,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
+          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.dialpad),
+            SizedBox(width: 8),
+            Text('ENTER QUIZ CODE'),
+          ],
+        ),
+      ),
     );
   }
   
@@ -153,6 +202,17 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       ElevatedButton(
                         onPressed: () => context.go('/create'),
                         child: const Text('Create Quiz'),
+                      ),
+                    ] else ...[
+                      const SizedBox(height: 20),
+                      ElevatedButton.icon(
+                        onPressed: () => context.go('/join'),
+                        icon: const Icon(Icons.dialpad),
+                        label: const Text('Join with Code'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.amber.shade700,
+                          foregroundColor: Colors.white,
+                        ),
                       ),
                     ],
                   ],
@@ -182,6 +242,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         trailing: _tabController.index == 0 ? Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
+                            IconButton(
+                              icon: const Icon(Icons.present_to_all),
+                              onPressed: () => context.go('/host/${quiz.id}'),
+                              tooltip: 'Host Quiz',
+                            ),
                             Icon(
                               quiz.active
                                   ? Icons.visibility

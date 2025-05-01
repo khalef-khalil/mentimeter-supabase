@@ -8,6 +8,8 @@ import 'screens/quiz_screen.dart';
 import 'screens/create_quiz_screen.dart';
 import 'screens/quiz_responses_screen.dart';
 import 'screens/auth_screen.dart';
+import 'screens/host_quiz_screen.dart';
+import 'screens/join_quiz_screen.dart';
 import 'widgets/auth_wrapper.dart';
 import 'services/supabase_service.dart';
 import 'utils/logger.dart';
@@ -77,7 +79,11 @@ final _router = GoRouter(
       path: '/quiz/:id',
       builder: (context, state) {
         final quizId = state.pathParameters['id']!;
-        return QuizScreen(quizId: quizId);
+        final sessionCode = state.uri.queryParameters['session'];
+        return QuizScreen(
+          quizId: quizId,
+          sessionCode: sessionCode,
+        );
       },
     ),
     GoRoute(
@@ -85,6 +91,19 @@ final _router = GoRouter(
       builder: (context, state) => AuthWrapper(
         child: const CreateQuizScreen(),
       ),
+    ),
+    GoRoute(
+      path: '/host/:quizId',
+      builder: (context, state) {
+        final quizId = state.pathParameters['quizId']!;
+        return AuthWrapper(
+          child: HostQuizScreen(quizId: quizId),
+        );
+      },
+    ),
+    GoRoute(
+      path: '/join',
+      builder: (context, state) => const JoinQuizScreen(),
     ),
     GoRoute(
       path: '/responses/:quizId',
@@ -101,10 +120,11 @@ final _router = GoRouter(
     final isAuthenticated = _supabaseService.currentUser != null;
     final isAuthRoute = state.fullPath == '/login';
     final isQuizRoute = state.fullPath?.startsWith('/quiz/') ?? false;
+    final isJoinRoute = state.fullPath == '/join';
     
     // If not authenticated and not on login route, redirect to login
     // Allow public quiz routes without authentication
-    if (!isAuthenticated && !isAuthRoute && !isQuizRoute) {
+    if (!isAuthenticated && !isAuthRoute && !isQuizRoute && !isJoinRoute) {
       return '/login';
     }
     

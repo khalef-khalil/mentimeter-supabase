@@ -11,6 +11,7 @@ class Question {
   final List<String>? options;
   final DateTime createdAt;
   final int position;
+  final int timerSeconds;
   
   Question({
     required this.id,
@@ -20,6 +21,7 @@ class Question {
     this.options,
     required this.createdAt,
     required this.position,
+    this.timerSeconds = 30,
   });
   
   factory Question.fromJson(Map<String, dynamic> json) {
@@ -51,6 +53,7 @@ class Question {
       options: optionsList,
       createdAt: DateTime.parse(json['created_at']),
       position: json['position'] ?? 0,
+      timerSeconds: json['timer_seconds'] ?? 30,
     );
   }
   
@@ -72,6 +75,7 @@ class Question {
       'question_type': typeString,
       'created_at': createdAt.toIso8601String(),
       'position': position,
+      'timer_seconds': timerSeconds,
     };
     
     if (options != null && questionType == QuestionType.multipleChoice) {

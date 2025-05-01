@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/quiz.dart';
 import '../models/question.dart';
 import '../models/response.dart';
+import '../models/quiz_session.dart';
 import '../utils/logger.dart';
 import '../main.dart';
 
@@ -111,12 +112,14 @@ class SupabaseService {
     required QuestionType questionType,
     List<String>? options,
     int position = 0,
+    int timerSeconds = 30,
   }) async {
     Map<String, dynamic> data = {
       'quiz_id': quizId,
       'question_text': questionText,
       'question_type': questionType == QuestionType.multipleChoice ? 'multiple_choice' : 'word_cloud',
       'position': position,
+      'timer_seconds': timerSeconds,
     };
     
     if (options != null && questionType == QuestionType.multipleChoice) {
@@ -140,5 +143,57 @@ class SupabaseService {
     }).select().single();
     
     return QuizResponse.fromJson(response);
+  }
+  
+  // Quiz Session methods
+  Future<QuizSession> createQuizSession(String quizId) async {
+    if (currentUser == null) {
+      throw Exception('User must be logged in to host a quiz');
+    }
+    
+    // Call the database function to generate a join code
+    final codeResponse = await _client.rpc('generate_join_code');
+    final joinCode = codeResponse as String;
+    
+    final response = await _client.from('quiz_sessions').insert({
+      'quiz_id': quizId,
+      'host_id': currentUser!.id,
+      'join_code': joinCode,
+      'is_active': true,
+    }).select().single();
+    
+    return QuizSession.fromJson(response);
+  }
+  
+  Future<QuizSession> getSessionByCode(String joinCode) async {
+    final response = await _client
+        .from('quiz_sessions')
+        .select()
+        .eq('join_code', joinCode)
+        .eq('is_active', true)
+        .single();
+    
+    return QuizSession.fromJson(response);
+  }
+  
+  Future<List<QuizSession>> getUserActiveSessions() async {
+    if (currentUser == null) return [];
+    
+    final response = await _client
+        .from('quiz_sessions')
+        .select()
+        .eq('host_id', currentUser!.id)
+        .eq('is_active', true)
+        .order('created_at');
+    
+    return (response as List).map((json) => QuizSession.fromJson(json)).toList();
+  }
+  
+  Future<void> endQuizSession(String sessionId) async {
+    await _client
+        .from('quiz_sessions')
+        .update({'is_active': false})
+        .eq('id', sessionId)
+        .eq('host_id', currentUser!.id);
   }
 } 

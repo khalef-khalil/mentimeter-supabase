@@ -21,12 +21,14 @@ class _QuestionFormState extends State<QuestionForm> {
   late TextEditingController _questionController;
   late QuestionType _questionType;
   late List<TextEditingController> _optionControllers;
+  late int _timerSeconds;
   
   @override
   void initState() {
     super.initState();
     _questionController = TextEditingController(text: widget.initialData['text']);
     _questionType = widget.initialData['type'] ?? QuestionType.multipleChoice;
+    _timerSeconds = widget.initialData['timerSeconds'] ?? 30;
     _optionControllers = (widget.initialData['options'] as List<dynamic>? ?? [])
         .map((option) => TextEditingController(text: option.toString()))
         .toList();
@@ -50,6 +52,7 @@ class _QuestionFormState extends State<QuestionForm> {
       'text': _questionController.text,
       'type': _questionType,
       'options': _optionControllers.map((c) => c.text).toList(),
+      'timerSeconds': _timerSeconds,
     };
     widget.onChanged(data);
   }
@@ -103,28 +106,58 @@ class _QuestionFormState extends State<QuestionForm> {
               ],
             ),
             const SizedBox(height: 16),
-            DropdownButtonFormField<QuestionType>(
-              value: _questionType,
-              decoration: const InputDecoration(
-                labelText: 'Question Type',
-                border: OutlineInputBorder(),
-              ),
-              items: const [
-                DropdownMenuItem(
-                  value: QuestionType.multipleChoice,
-                  child: Text('Multiple Choice'),
+            Row(
+              children: [
+                Expanded(
+                  flex: 2,
+                  child: DropdownButtonFormField<QuestionType>(
+                    value: _questionType,
+                    decoration: const InputDecoration(
+                      labelText: 'Question Type',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: const [
+                      DropdownMenuItem(
+                        value: QuestionType.multipleChoice,
+                        child: Text('Multiple Choice'),
+                      ),
+                      DropdownMenuItem(
+                        value: QuestionType.wordCloud,
+                        child: Text('Word Cloud'),
+                      ),
+                    ],
+                    onChanged: (value) {
+                      setState(() {
+                        _questionType = value!;
+                      });
+                      _notifyChange();
+                    },
+                  ),
                 ),
-                DropdownMenuItem(
-                  value: QuestionType.wordCloud,
-                  child: Text('Word Cloud'),
+                const SizedBox(width: 16),
+                Expanded(
+                  flex: 1,
+                  child: DropdownButtonFormField<int>(
+                    value: _timerSeconds,
+                    decoration: const InputDecoration(
+                      labelText: 'Timer (seconds)',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: [15, 30, 45, 60, 90, 120].map((seconds) {
+                      return DropdownMenuItem(
+                        value: seconds,
+                        child: Text('$seconds sec'),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      setState(() {
+                        _timerSeconds = value!;
+                      });
+                      _notifyChange();
+                    },
+                  ),
                 ),
               ],
-              onChanged: (value) {
-                setState(() {
-                  _questionType = value!;
-                });
-                _notifyChange();
-              },
             ),
             if (_questionType == QuestionType.multipleChoice) ...[
               const SizedBox(height: 16),

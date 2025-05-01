@@ -30,6 +30,7 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
         'text': '',
         'type': QuestionType.multipleChoice,
         'options': ['', ''],
+        'timerSeconds': 30,
       });
     });
   }
@@ -83,6 +84,7 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
           questionType: question['type'],
           options: question['type'] == QuestionType.multipleChoice ? question['options'] : null,
           position: i,
+          timerSeconds: question['timerSeconds'] ?? 30,
         );
       }
       
