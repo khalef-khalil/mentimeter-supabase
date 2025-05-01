@@ -3,13 +3,71 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/quiz.dart';
 import '../models/question.dart';
 import '../models/response.dart';
+import '../utils/logger.dart';
+import '../main.dart';
 
 class SupabaseService {
   static final SupabaseClient _client = Supabase.instance.client;
   
+  // Authentication methods
+  User? get currentUser => _client.auth.currentUser;
+  
+  Stream<AuthState> get authStateChanges => _client.auth.onAuthStateChange;
+  
+  Future<AuthResponse> signUp({
+    required String email, 
+    required String password,
+  }) async {
+    try {
+      return await _client.auth.signUp(
+        email: email,
+        password: password,
+        emailRedirectTo: 'io.supabase.flutterquickstart://login-callback/',
+      );
+    } catch (e) {
+      AppLogger.error('Signup error', error: e);
+      rethrow;
+    }
+  }
+  
+  Future<AuthResponse> signIn({
+    required String email, 
+    required String password,
+  }) async {
+    try {
+      return await _client.auth.signInWithPassword(
+        email: email,
+        password: password,
+      );
+    } catch (e) {
+      AppLogger.error('Login error', error: e);
+      rethrow;
+    }
+  }
+  
+  Future<void> signOut() async {
+    try {
+      await _client.auth.signOut();
+    } catch (e) {
+      AppLogger.error('Sign out error', error: e);
+      rethrow;
+    }
+  }
+  
   // Quiz methods
   Future<List<Quiz>> getQuizzes() async {
     final response = await _client.from('quizzes').select().order('created_at');
+    return (response as List).map((json) => Quiz.fromJson(json)).toList();
+  }
+  
+  Future<List<Quiz>> getUserQuizzes() async {
+    if (currentUser == null) return [];
+    
+    final response = await _client
+        .from('quizzes')
+        .select()
+        .eq('user_id', currentUser!.id)
+        .order('created_at');
     return (response as List).map((json) => Quiz.fromJson(json)).toList();
   }
   
@@ -23,10 +81,14 @@ class SupabaseService {
     return Quiz.fromJson(response);
   }
   
-  Future<Quiz> createQuiz(String title, {String? createdBy}) async {
+  Future<Quiz> createQuiz(String title) async {
+    if (currentUser == null) {
+      throw Exception('User must be logged in to create a quiz');
+    }
+    
     final response = await _client.from('quizzes').insert({
       'title': title,
-      'created_by': createdBy,
+      'user_id': currentUser!.id,
       'active': false,
     }).select().single();
     

@@ -85,3 +85,5 @@ pubspec.lock
 *.freezed.dart
 *.mocks.dart
 *.chopper.dart 
+
+rules.md

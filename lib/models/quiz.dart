@@ -1,14 +1,14 @@
 class Quiz {
   final String id;
   final String title;
-  final String? createdBy;
+  final String? userId;
   final DateTime createdAt;
   final bool active;
   
   Quiz({
     required this.id,
     required this.title,
-    this.createdBy,
+    this.userId,
     required this.createdAt,
     required this.active,
   });
@@ -17,7 +17,7 @@ class Quiz {
     return Quiz(
       id: json['id'],
       title: json['title'],
-      createdBy: json['created_by'],
+      userId: json['user_id'],
       createdAt: DateTime.parse(json['created_at']),
       active: json['active'] ?? false,
     );
@@ -27,7 +27,7 @@ class Quiz {
     return {
       'id': id,
       'title': title,
-      'created_by': createdBy,
+      'user_id': userId,
       'created_at': createdAt.toIso8601String(),
       'active': active,
     };
