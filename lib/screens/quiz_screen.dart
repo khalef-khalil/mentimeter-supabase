@@ -378,12 +378,14 @@ class _QuizScreenState extends State<QuizScreen> {
     switch (question.questionType) {
       case QuestionType.multipleChoice:
         return MultipleChoiceQuestion(
+          key: ValueKey('question_${_currentQuestionIndex}_${question.id}'),
           question: question,
           onSubmit: _submitResponse,
           onNext: _nextQuestion,
         );
       case QuestionType.wordCloud:
         return WordCloudQuestion(
+          key: ValueKey('question_${_currentQuestionIndex}_${question.id}'),
           question: question,
           onSubmit: _submitResponse,
         );
