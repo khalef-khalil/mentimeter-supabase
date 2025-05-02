@@ -4,6 +4,7 @@ import '../models/question.dart';
 import '../models/quiz.dart';
 import '../services/supabase_service.dart';
 import '../widgets/question_form.dart';
+import '../widgets/app_scaffold.dart';
 
 class CreateQuizScreen extends StatefulWidget {
   const CreateQuizScreen({super.key});
@@ -117,167 +118,171 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
   
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Create Quiz'),
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        foregroundColor: Colors.white,
-      ),
-      body: _isCreating
-          ? const Center(child: CircularProgressIndicator())
-          : Form(
-              key: _formKey,
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    TextFormField(
-                      controller: _titleController,
-                      decoration: const InputDecoration(
-                        labelText: 'Quiz Title',
-                        border: OutlineInputBorder(),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'Please enter a quiz title';
-                        }
-                        return null;
-                      },
+    return AppScaffold(
+      title: 'Create Quiz',
+      showBottomNav: true,
+      currentIndex: 0,
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.go('/'),
+        ),
+      ],
+      child: _isCreating
+        ? const Center(child: CircularProgressIndicator())
+        : Form(
+            key: _formKey,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TextFormField(
+                    controller: _titleController,
+                    decoration: const InputDecoration(
+                      labelText: 'Quiz Title',
+                      border: OutlineInputBorder(),
                     ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: DropdownButtonFormField<QuizDifficulty>(
-                            value: _difficulty,
-                            decoration: const InputDecoration(
-                              labelText: 'Difficulty',
-                              border: OutlineInputBorder(),
-                            ),
-                            items: const [
-                              DropdownMenuItem(
-                                value: QuizDifficulty.easy,
-                                child: Text('Easy'),
-                              ),
-                              DropdownMenuItem(
-                                value: QuizDifficulty.medium,
-                                child: Text('Medium'),
-                              ),
-                              DropdownMenuItem(
-                                value: QuizDifficulty.hard,
-                                child: Text('Hard'),
-                              ),
-                            ],
-                            onChanged: (value) {
-                              setState(() {
-                                _difficulty = value!;
-                              });
-                            },
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Please enter a quiz title';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: DropdownButtonFormField<QuizDifficulty>(
+                          value: _difficulty,
+                          decoration: const InputDecoration(
+                            labelText: 'Difficulty',
+                            border: OutlineInputBorder(),
                           ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: DropdownButtonFormField<QuizCategory>(
-                            value: _category,
-                            decoration: const InputDecoration(
-                              labelText: 'Category',
-                              border: OutlineInputBorder(),
+                          items: const [
+                            DropdownMenuItem(
+                              value: QuizDifficulty.easy,
+                              child: Text('Easy'),
                             ),
-                            items: QuizCategory.values.map((category) {
-                              String label;
-                              switch (category) {
-                                case QuizCategory.general:
-                                  label = 'General';
-                                  break;
-                                case QuizCategory.science:
-                                  label = 'Science';
-                                  break;
-                                case QuizCategory.history:
-                                  label = 'History';
-                                  break;
-                                case QuizCategory.geography:
-                                  label = 'Geography';
-                                  break;
-                                case QuizCategory.entertainment:
-                                  label = 'Entertainment';
-                                  break;
-                                case QuizCategory.sports:
-                                  label = 'Sports';
-                                  break;
-                                case QuizCategory.technology:
-                                  label = 'Technology';
-                                  break;
-                              }
-                              return DropdownMenuItem(
-                                value: category,
-                                child: Text(label),
-                              );
-                            }).toList(),
-                            onChanged: (value) {
-                              setState(() {
-                                _category = value!;
-                              });
-                            },
-                          ),
+                            DropdownMenuItem(
+                              value: QuizDifficulty.medium,
+                              child: Text('Medium'),
+                            ),
+                            DropdownMenuItem(
+                              value: QuizDifficulty.hard,
+                              child: Text('Hard'),
+                            ),
+                          ],
+                          onChanged: (value) {
+                            setState(() {
+                              _difficulty = value!;
+                            });
+                          },
                         ),
-                      ],
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: DropdownButtonFormField<QuizCategory>(
+                          value: _category,
+                          decoration: const InputDecoration(
+                            labelText: 'Category',
+                            border: OutlineInputBorder(),
+                          ),
+                          items: QuizCategory.values.map((category) {
+                            String label;
+                            switch (category) {
+                              case QuizCategory.general:
+                                label = 'General';
+                                break;
+                              case QuizCategory.science:
+                                label = 'Science';
+                                break;
+                              case QuizCategory.history:
+                                label = 'History';
+                                break;
+                              case QuizCategory.geography:
+                                label = 'Geography';
+                                break;
+                              case QuizCategory.entertainment:
+                                label = 'Entertainment';
+                                break;
+                              case QuizCategory.sports:
+                                label = 'Sports';
+                                break;
+                              case QuizCategory.technology:
+                                label = 'Technology';
+                                break;
+                            }
+                            return DropdownMenuItem(
+                              value: category,
+                              child: Text(label),
+                            );
+                          }).toList(),
+                          onChanged: (value) {
+                            setState(() {
+                              _category = value!;
+                            });
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  const Text(
+                    'Questions',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
                     ),
-                    const SizedBox(height: 24),
-                    const Text(
-                      'Questions',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+                  ),
+                  const SizedBox(height: 16),
+                  ..._questions.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final question = entry.value;
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: QuestionForm(
+                        initialData: question,
+                        onChanged: (data) => _updateQuestion(index, data),
+                        onRemove: () => _removeQuestion(index),
+                      ),
+                    );
+                  }).toList(),
+                  const SizedBox(height: 16),
+                  Center(
+                    child: ElevatedButton.icon(
+                      onPressed: _addQuestion,
+                      icon: const Icon(Icons.add),
+                      label: const Text('Add Question'),
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 12,
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    ..._questions.asMap().entries.map((entry) {
-                      final index = entry.key;
-                      final question = entry.value;
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
-                        child: QuestionForm(
-                          initialData: question,
-                          onChanged: (data) => _updateQuestion(index, data),
-                          onRemove: () => _removeQuestion(index),
-                        ),
-                      );
-                    }).toList(),
-                    const SizedBox(height: 16),
+                  ),
+                  const SizedBox(height: 32),
+                  if (_questions.isNotEmpty)
                     Center(
-                      child: ElevatedButton.icon(
-                        onPressed: _addQuestion,
-                        icon: const Icon(Icons.add),
-                        label: const Text('Add Question'),
+                      child: ElevatedButton(
+                        onPressed: _createQuiz,
                         style: ElevatedButton.styleFrom(
+                          backgroundColor: Theme.of(context).colorScheme.primary,
+                          foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 24,
-                            vertical: 12,
+                            horizontal: 32,
+                            vertical: 16,
                           ),
                         ),
+                        child: const Text('Create Quiz'),
                       ),
                     ),
-                    const SizedBox(height: 32),
-                    if (_questions.isNotEmpty)
-                      Center(
-                        child: ElevatedButton(
-                          onPressed: _createQuiz,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Theme.of(context).colorScheme.primary,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 32,
-                              vertical: 16,
-                            ),
-                          ),
-                          child: const Text('Create Quiz'),
-                        ),
-                      ),
-                  ],
-                ),
+                ],
               ),
             ),
+          ),
     );
   }
 } 
