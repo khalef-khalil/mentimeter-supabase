@@ -10,6 +10,8 @@ import 'screens/quiz_responses_screen.dart';
 import 'screens/auth_screen.dart';
 import 'screens/host_quiz_screen.dart';
 import 'screens/join_quiz_screen.dart';
+import 'screens/stats_screen.dart';
+import 'screens/quiz_history_screen.dart';
 import 'widgets/auth_wrapper.dart';
 import 'services/supabase_service.dart';
 import 'utils/logger.dart';
@@ -113,6 +115,18 @@ final _router = GoRouter(
           child: QuizResponsesScreen(quizId: quizId),
         );
       },
+    ),
+    GoRoute(
+      path: '/stats',
+      builder: (context, state) => AuthWrapper(
+        child: const StatsScreen(),
+      ),
+    ),
+    GoRoute(
+      path: '/history',
+      builder: (context, state) => AuthWrapper(
+        child: const QuizHistoryScreen(),
+      ),
     ),
   ],
   redirect: (context, state) {

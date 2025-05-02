@@ -4,6 +4,7 @@ import '../models/quiz.dart';
 import '../models/question.dart';
 import '../models/response.dart';
 import '../models/quiz_session.dart';
+import '../models/quiz_attempt.dart';
 import '../utils/logger.dart';
 import '../main.dart';
 
@@ -202,5 +203,79 @@ class SupabaseService {
         .update({'is_active': false})
         .eq('id', sessionId)
         .eq('host_id', currentUser!.id);
+  }
+  
+  // Quiz Attempts methods
+  Future<QuizAttempt> startQuizAttempt(String quizId, String quizTitle, int totalQuestions) async {
+    if (currentUser == null) {
+      throw Exception('User must be logged in to track quiz attempts');
+    }
+    
+    final response = await _client.from('quiz_attempts').insert({
+      'quiz_id': quizId,
+      'user_id': currentUser!.id,
+      'total_questions': totalQuestions,
+      'quiz_title': quizTitle,
+    }).select().single();
+    
+    return QuizAttempt.fromJson(response);
+  }
+  
+  Future<void> completeQuizAttempt(String attemptId, int correctAnswers) async {
+    await _client.from('quiz_attempts').update({
+      'completed_at': DateTime.now().toIso8601String(),
+      'correct_answers': correctAnswers,
+    }).eq('id', attemptId);
+  }
+  
+  Future<List<QuizAttempt>> getUserQuizAttempts() async {
+    if (currentUser == null) return [];
+    
+    final response = await _client
+        .from('quiz_attempts')
+        .select()
+        .eq('user_id', currentUser!.id)
+        .order('started_at', ascending: false);
+    
+    return (response as List).map((json) => QuizAttempt.fromJson(json)).toList();
+  }
+  
+  Future<Map<String, dynamic>> getUserStats() async {
+    if (currentUser == null) {
+      return {
+        'total_attempts': 0,
+        'completed_attempts': 0,
+        'avg_score': 0.0,
+        'highest_score': 0.0,
+      };
+    }
+    
+    final attempts = await getUserQuizAttempts();
+    
+    if (attempts.isEmpty) {
+      return {
+        'total_attempts': 0,
+        'completed_attempts': 0,
+        'avg_score': 0.0,
+        'highest_score': 0.0,
+      };
+    }
+    
+    final completedAttempts = attempts.where((a) => a.isCompleted).toList();
+    
+    double avgScore = 0;
+    double highestScore = 0;
+    
+    if (completedAttempts.isNotEmpty) {
+      avgScore = completedAttempts.map((a) => a.score).reduce((a, b) => a + b) / completedAttempts.length;
+      highestScore = completedAttempts.map((a) => a.score).reduce((a, b) => a > b ? a : b);
+    }
+    
+    return {
+      'total_attempts': attempts.length,
+      'completed_attempts': completedAttempts.length,
+      'avg_score': avgScore,
+      'highest_score': highestScore,
+    };
   }
 } 

@@ -107,6 +107,16 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         foregroundColor: Colors.white,
         actions: [
           IconButton(
+            icon: const Icon(Icons.bar_chart),
+            onPressed: () => context.go('/stats'),
+            tooltip: 'Your Stats',
+          ),
+          IconButton(
+            icon: const Icon(Icons.history),
+            onPressed: () => context.go('/history'),
+            tooltip: 'Quiz History',
+          ),
+          IconButton(
             icon: const Icon(Icons.login),
             onPressed: () => context.go('/join'),
             tooltip: 'Join Quiz',

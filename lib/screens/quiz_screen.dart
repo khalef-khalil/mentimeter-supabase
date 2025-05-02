@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../models/quiz.dart';
 import '../models/question.dart';
 import '../models/quiz_session.dart';
+import '../models/quiz_attempt.dart';
 import '../services/supabase_service.dart';
 import '../widgets/multiple_choice_question.dart';
 import '../widgets/word_cloud_question.dart';
@@ -27,10 +28,12 @@ class _QuizScreenState extends State<QuizScreen> {
   bool _isLoading = true;
   Quiz? _quiz;
   QuizSession? _session;
+  QuizAttempt? _attempt;
   List<Question> _questions = [];
   int _currentQuestionIndex = 0;
   Timer? _timer;
   int _timeRemaining = 0;
+  int _correctAnswers = 0;
   
   @override
   void initState() {
@@ -62,6 +65,23 @@ class _QuizScreenState extends State<QuizScreen> {
           });
         } catch (e) {
           // Session not found or expired, continue without it
+        }
+      }
+      
+      // Start tracking the quiz attempt
+      if (_supabaseService.currentUser != null) {
+        try {
+          final attempt = await _supabaseService.startQuizAttempt(
+            quiz.id, 
+            quiz.title, 
+            questions.length
+          );
+          setState(() {
+            _attempt = attempt;
+          });
+        } catch (e) {
+          // Failed to track attempt, continue without it
+          debugPrint('Failed to track quiz attempt: $e');
         }
       }
       
@@ -122,11 +142,25 @@ class _QuizScreenState extends State<QuizScreen> {
         _startTimer();
       });
     } else {
+      // Complete the quiz attempt if we're tracking
+      if (_attempt != null) {
+        _supabaseService.completeQuizAttempt(_attempt!.id, _correctAnswers);
+      }
+      
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
           title: const Text('Quiz Complete'),
-          content: const Text('You have completed the quiz. Thank you for participating!'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('You have completed the quiz. Thank you for participating!'),
+              const SizedBox(height: 16),
+              Text('Your score: $_correctAnswers out of ${_questions.length}'),
+              Text('Percentage: ${(_correctAnswers / _questions.length * 100).toStringAsFixed(0)}%'),
+            ],
+          ),
           actions: [
             TextButton(
               onPressed: () {
@@ -147,6 +181,17 @@ class _QuizScreenState extends State<QuizScreen> {
         _questions[_currentQuestionIndex].id, 
         responseData,
       );
+      
+      // Check if the answer is correct for multiple choice
+      final question = _questions[_currentQuestionIndex];
+      if (question.questionType == QuestionType.multipleChoice &&
+          question.correctOption != null &&
+          responseData['selected_option'] == question.correctOption) {
+        setState(() {
+          _correctAnswers++;
+        });
+      }
+      
       // We don't automatically move to the next question anymore
       // Let the user see the feedback first
     } catch (e) {
@@ -219,18 +264,27 @@ class _QuizScreenState extends State<QuizScreen> {
                         const SizedBox(height: 16),
                       ],
                       
+                      // Progress and score display
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Question: ${_currentQuestionIndex + 1}/${_questions.length}',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          Text(
+                            'Score: $_correctAnswers',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      
                       // Progress bar
                       LinearProgressIndicator(
                         value: (_currentQuestionIndex + 1) / _questions.length,
                         backgroundColor: Colors.grey[300],
                         color: Theme.of(context).colorScheme.primary,
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        child: Text(
-                          'Question ${_currentQuestionIndex + 1} of ${_questions.length}',
-                          textAlign: TextAlign.center,
-                        ),
                       ),
                       const SizedBox(height: 16),
                       Expanded(
