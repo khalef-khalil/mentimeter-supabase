@@ -54,37 +54,78 @@ class MencimeterApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp.router(
       title: 'Mencimeter',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.blue,
+          seedColor: const Color(0xFF2979FF),
           brightness: Brightness.light,
-          primary: Colors.blue.shade700,
-          secondary: Colors.orangeAccent,
+          primary: const Color(0xFF2979FF),
+          secondary: const Color(0xFFFF9100),
+          tertiary: const Color(0xFF00BFA5),
+          background: Colors.grey.shade50,
+          surface: Colors.white,
         ),
         useMaterial3: true,
         appBarTheme: AppBarTheme(
           elevation: 0,
-          backgroundColor: Colors.blue.shade700,
+          backgroundColor: const Color(0xFF2979FF),
           foregroundColor: Colors.white,
+          centerTitle: true,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(
+              bottom: Radius.circular(16),
+            ),
+          ),
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
             elevation: 2,
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
         ),
         cardTheme: CardTheme(
-          elevation: 2,
+          elevation: 3,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(16),
           ),
+          shadowColor: Colors.black26,
         ),
         inputDecorationTheme: InputDecorationTheme(
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(width: 1),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.grey.shade300, width: 1),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: const Color(0xFF2979FF), width: 2),
           ),
           filled: true,
           fillColor: Colors.grey.shade50,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        ),
+        bottomNavigationBarTheme: BottomNavigationBarThemeData(
+          backgroundColor: Colors.white,
+          elevation: 8,
+          selectedItemColor: const Color(0xFF2979FF),
+          unselectedItemColor: Colors.grey.shade600,
+          selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500),
+          type: BottomNavigationBarType.fixed,
+        ),
+        textTheme: TextTheme(
+          headlineMedium: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Colors.grey.shade800,
+          ),
+          titleLarge: const TextStyle(
+            fontWeight: FontWeight.bold,
+          ),
         ),
       ),
       routerConfig: _router,

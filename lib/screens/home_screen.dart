@@ -175,21 +175,40 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       currentIndex: 0,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Mencimeter'),
+          title: const Text(
+            'Mencimeter',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 22,
+            ),
+          ),
           actions: [
-            IconButton(
-              icon: const Icon(Icons.login),
-              onPressed: () => context.go('/join'),
-              tooltip: 'Join Quiz',
+            Padding(
+              padding: const EdgeInsets.only(right: 8.0),
+              child: IconButton(
+                icon: const Icon(Icons.login_rounded, size: 26),
+                onPressed: () => context.go('/join'),
+                tooltip: 'Join Quiz',
+              ),
             ),
           ],
           bottom: TabBar(
             controller: _tabController,
             tabs: const [
-              Tab(text: 'My Quizzes'),
-              Tab(text: 'Public Quizzes'),
+              Tab(
+                icon: Icon(Icons.person_rounded),
+                text: 'My Quizzes',
+              ),
+              Tab(
+                icon: Icon(Icons.public_rounded),
+                text: 'Public Quizzes',
+              ),
             ],
             labelColor: Colors.white,
+            indicatorColor: Colors.white,
+            indicatorSize: TabBarIndicatorSize.tab,
+            indicatorWeight: 3,
+            labelStyle: const TextStyle(fontWeight: FontWeight.bold),
           ),
         ),
         body: Column(
@@ -207,70 +226,108 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              const Text(
-                                'No quizzes found',
-                                style: TextStyle(fontSize: 18),
+                              Icon(
+                                _tabController.index == 0 
+                                    ? Icons.quiz_rounded 
+                                    : Icons.search_rounded,
+                                size: 80,
+                                color: Colors.grey.shade300,
                               ),
-                              const SizedBox(height: 8),
+                              const SizedBox(height: 24),
+                              Text(
+                                'No quizzes found',
+                                style: Theme.of(context).textTheme.headlineSmall,
+                              ),
+                              const SizedBox(height: 12),
                               if (_tabController.index == 0) ...[
-                                const Text(
+                                Text(
                                   'Create your first quiz',
-                                  style: TextStyle(color: Colors.grey),
+                                  style: TextStyle(
+                                    color: Colors.grey.shade600, 
+                                    fontSize: 16
+                                  ),
                                 ),
-                                const SizedBox(height: 20),
-                                ElevatedButton(
+                                const SizedBox(height: 32),
+                                ElevatedButton.icon(
                                   onPressed: () => context.go('/create'),
-                                  child: const Text('Create Quiz'),
+                                  icon: const Icon(Icons.add_circle_outline),
+                                  label: const Text('Create Quiz'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Theme.of(context).colorScheme.primary,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 32,
+                                      vertical: 16,
+                                    ),
+                                  ),
                                 ),
                               ] else ...[
-                                const Text(
+                                Text(
                                   'Try different filters or join a quiz with a code',
-                                  style: TextStyle(color: Colors.grey),
+                                  style: TextStyle(
+                                    color: Colors.grey.shade600,
+                                    fontSize: 16
+                                  ),
                                   textAlign: TextAlign.center,
                                 ),
-                                const SizedBox(height: 20),
-                                ElevatedButton(
+                                const SizedBox(height: 32),
+                                ElevatedButton.icon(
                                   onPressed: () => context.go('/join'),
-                                  child: const Text('Join Quiz with Code'),
+                                  icon: const Icon(Icons.input_rounded),
+                                  label: const Text('Join Quiz with Code'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Theme.of(context).colorScheme.secondary,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 32,
+                                      vertical: 16,
+                                    ),
+                                  ),
                                 ),
                               ],
                             ],
                           ),
                         )
-                      : ListView.builder(
-                          padding: const EdgeInsets.all(16),
-                          itemCount: _quizzes.length,
-                          itemBuilder: (context, index) {
-                            final quiz = _quizzes[index];
-                            return QuizCard(
-                              quiz: quiz,
-                              onToggleFavorite: (quizId, isFavorite) => 
-                                _toggleFavorite(quizId, isFavorite),
-                              onTap: () {
-                                if (_tabController.index == 0) {
-                                  context.go('/host/${quiz.id}');
-                                } else {
-                                  context.go('/quiz/${quiz.id}');
-                                }
-                              },
-                              onDelete: _tabController.index == 0
-                                  ? () => _deleteQuiz(quiz.id)
-                                  : null,
-                              onViewResponses: _tabController.index == 0
-                                  ? () => context.go('/responses/${quiz.id}')
-                                  : null,
-                            );
-                          },
+                      : Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          child: ListView.builder(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            itemCount: _quizzes.length,
+                            itemBuilder: (context, index) {
+                              final quiz = _quizzes[index];
+                              return QuizCard(
+                                quiz: quiz,
+                                onToggleFavorite: (quizId, isFavorite) => 
+                                  _toggleFavorite(quizId, isFavorite),
+                                onTap: () {
+                                  if (_tabController.index == 0) {
+                                    context.go('/host/${quiz.id}');
+                                  } else {
+                                    context.go('/quiz/${quiz.id}');
+                                  }
+                                },
+                                onDelete: _tabController.index == 0
+                                    ? () => _deleteQuiz(quiz.id)
+                                    : null,
+                                onViewResponses: _tabController.index == 0
+                                    ? () => context.go('/responses/${quiz.id}')
+                                    : null,
+                              );
+                            },
+                          ),
                         ),
             ),
           ],
         ),
         floatingActionButton: _tabController.index == 0
-            ? FloatingActionButton(
+            ? FloatingActionButton.extended(
                 onPressed: () => context.go('/create'),
                 tooltip: 'Create a new quiz',
                 backgroundColor: Theme.of(context).colorScheme.secondary,
-                child: const Icon(Icons.add),
+                foregroundColor: Colors.white,
+                elevation: 4,
+                icon: const Icon(Icons.add),
+                label: const Text('Create Quiz'),
               )
             : null,
       ),
