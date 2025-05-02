@@ -111,6 +111,7 @@ class SupabaseService {
     required String questionText,
     required QuestionType questionType,
     List<String>? options,
+    String? correctOption,
     int position = 0,
     int timerSeconds = 30,
   }) async {
@@ -123,7 +124,13 @@ class SupabaseService {
     };
     
     if (options != null && questionType == QuestionType.multipleChoice) {
-      data['options'] = {'choices': options};
+      final optionsData = <String, dynamic>{
+        'choices': options
+      };
+      if (correctOption != null) {
+        optionsData['correct_option'] = correctOption;
+      }
+      data['options'] = optionsData;
     }
     
     final response = await _client.from('questions').insert(data).select().single();

@@ -9,6 +9,7 @@ class Question {
   final String questionText;
   final QuestionType questionType;
   final List<String>? options;
+  final String? correctOption;
   final DateTime createdAt;
   final int position;
   final int timerSeconds;
@@ -19,6 +20,7 @@ class Question {
     required this.questionText,
     required this.questionType,
     this.options,
+    this.correctOption,
     required this.createdAt,
     required this.position,
     this.timerSeconds = 30,
@@ -38,10 +40,14 @@ class Question {
     }
     
     List<String>? optionsList;
+    String? correctOptionValue;
     if (json['options'] != null) {
       final options = json['options'] as Map<String, dynamic>;
       if (options.containsKey('choices')) {
         optionsList = List<String>.from(options['choices']);
+      }
+      if (options.containsKey('correct_option')) {
+        correctOptionValue = options['correct_option'] as String;
       }
     }
     
@@ -51,6 +57,7 @@ class Question {
       questionText: json['question_text'],
       questionType: type,
       options: optionsList,
+      correctOption: correctOptionValue,
       createdAt: DateTime.parse(json['created_at']),
       position: json['position'] ?? 0,
       timerSeconds: json['timer_seconds'] ?? 30,
@@ -79,7 +86,13 @@ class Question {
     };
     
     if (options != null && questionType == QuestionType.multipleChoice) {
-      json['options'] = {'choices': options};
+      final optionsJson = <String, dynamic>{
+        'choices': options
+      };
+      if (correctOption != null) {
+        optionsJson['correct_option'] = correctOption;
+      }
+      json['options'] = optionsJson;
     }
     
     return json;

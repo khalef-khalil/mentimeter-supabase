@@ -147,7 +147,8 @@ class _QuizScreenState extends State<QuizScreen> {
         _questions[_currentQuestionIndex].id, 
         responseData,
       );
-      _nextQuestion();
+      // We don't automatically move to the next question anymore
+      // Let the user see the feedback first
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -249,6 +250,7 @@ class _QuizScreenState extends State<QuizScreen> {
         return MultipleChoiceQuestion(
           question: question,
           onSubmit: _submitResponse,
+          onNext: _nextQuestion,
         );
       case QuestionType.wordCloud:
         return WordCloudQuestion(

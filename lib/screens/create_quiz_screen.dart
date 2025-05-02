@@ -83,6 +83,7 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
           questionText: question['text'],
           questionType: question['type'],
           options: question['type'] == QuestionType.multipleChoice ? question['options'] : null,
+          correctOption: question['type'] == QuestionType.multipleChoice ? question['correctOption'] : null,
           position: i,
           timerSeconds: question['timerSeconds'] ?? 30,
         );

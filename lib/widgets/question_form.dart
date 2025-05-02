@@ -22,6 +22,7 @@ class _QuestionFormState extends State<QuestionForm> {
   late QuestionType _questionType;
   late List<TextEditingController> _optionControllers;
   late int _timerSeconds;
+  String? _correctOption;
   
   @override
   void initState() {
@@ -32,6 +33,7 @@ class _QuestionFormState extends State<QuestionForm> {
     _optionControllers = (widget.initialData['options'] as List<dynamic>? ?? [])
         .map((option) => TextEditingController(text: option.toString()))
         .toList();
+    _correctOption = widget.initialData['correctOption'];
     
     if (_optionControllers.isEmpty && _questionType == QuestionType.multipleChoice) {
       _optionControllers = [TextEditingController(), TextEditingController()];
@@ -53,6 +55,7 @@ class _QuestionFormState extends State<QuestionForm> {
       'type': _questionType,
       'options': _optionControllers.map((c) => c.text).toList(),
       'timerSeconds': _timerSeconds,
+      'correctOption': _correctOption,
     };
     widget.onChanged(data);
   }
@@ -68,6 +71,11 @@ class _QuestionFormState extends State<QuestionForm> {
     setState(() {
       _optionControllers[index].dispose();
       _optionControllers.removeAt(index);
+      
+      // If the removed option was the correct answer, reset the correct answer
+      if (_correctOption == _optionControllers[index].text) {
+        _correctOption = null;
+      }
     });
     _notifyChange();
   }
@@ -203,6 +211,34 @@ class _QuestionFormState extends State<QuestionForm> {
                 onPressed: _addOption,
                 icon: const Icon(Icons.add),
                 label: const Text('Add Option'),
+              ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                value: _correctOption,
+                decoration: const InputDecoration(
+                  labelText: 'Correct Answer',
+                  border: OutlineInputBorder(),
+                  hintText: 'Select the correct answer',
+                ),
+                items: _optionControllers.map((controller) {
+                  final option = controller.text;
+                  return DropdownMenuItem(
+                    value: option.isNotEmpty ? option : null,
+                    child: Text(option.isNotEmpty ? option : 'No option selected'),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    _correctOption = value;
+                  });
+                  _notifyChange();
+                },
+                validator: (value) {
+                  if (_questionType == QuestionType.multipleChoice && value == null) {
+                    return 'Please select the correct answer';
+                  }
+                  return null;
+                },
               ),
             ],
           ],
