@@ -5,6 +5,7 @@ import '../models/quiz.dart';
 import '../models/quiz_session.dart';
 import '../models/question.dart';
 import '../services/supabase_service.dart';
+import '../widgets/app_scaffold.dart';
 
 class HostQuizScreen extends StatefulWidget {
   final String quizId;
@@ -132,13 +133,17 @@ class _HostQuizScreenState extends State<HostQuizScreen> {
   
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(_quiz?.title ?? 'Host Quiz'),
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        foregroundColor: Colors.white,
-      ),
-      body: _isLoading
+    return AppScaffold(
+      title: _quiz?.title ?? 'Host Quiz',
+      showBottomNav: true,
+      currentIndex: 0,
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.go('/'),
+        ),
+      ],
+      child: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
               padding: const EdgeInsets.all(16),
