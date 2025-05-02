@@ -75,14 +75,9 @@ class _HostQuizScreenState extends State<HostQuizScreen> {
         _isCreatingSession = false;
       });
 
-      // Show success message
+      // Navigate to the waiting room as host
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Quiz is now live! Share the code with participants.'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        context.go('/waiting-room/${session.joinCode}?host=true');
       }
     } catch (e) {
       setState(() {

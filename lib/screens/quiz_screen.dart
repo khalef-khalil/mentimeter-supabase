@@ -62,10 +62,24 @@ class _QuizScreenState extends State<QuizScreen> {
           final session = result['session'];
           final quiz = result['quiz'];
           
+          // Verify that the quiz has started
+          if (!session.hasStarted) {
+            context.go('/waiting-room/${widget.sessionCode}');
+            return;
+          }
+          
           setState(() {
             _session = session;
             _quiz = quiz;
           });
+          
+          // Add user as participant if not already
+          try {
+            await _supabaseService.addParticipantToSession(session.id);
+          } catch (e) {
+            // Ignore errors adding participant
+            debugPrint('Error adding participant: $e');
+          }
           
           // Now get the questions
           final questions = await _supabaseService.getQuestionsForQuiz(quiz.id);
@@ -190,6 +204,23 @@ class _QuizScreenState extends State<QuizScreen> {
         _supabaseService.completeQuizAttempt(_attempt!.id, _correctAnswers);
       }
       
+      // If part of a session, add result to leaderboard
+      if (_session != null) {
+        // Calculate total time taken (sum of all question timers)
+        final totalTime = _questions.fold<int>(
+          0, (sum, question) => sum + question.timerSeconds);
+        
+        // Calculate time spent (subtract remaining time from total time)
+        final timeSpent = totalTime - _timeRemaining;
+        
+        _supabaseService.addToLeaderboard(_session!.id, _correctAnswers, timeSpent);
+        
+        // Navigate to leaderboard
+        context.go('/leaderboard/${_session!.id}');
+        return;
+      }
+      
+      // If not part of a session, show the completion dialog
       showDialog(
         context: context,
         builder: (context) => AlertDialog(

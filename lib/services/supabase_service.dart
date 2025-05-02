@@ -381,9 +381,110 @@ class SupabaseService {
       'host_id': currentUser!.id,
       'join_code': joinCode,
       'is_active': true,
+      'has_started': false,
     }).select().single();
     
+    // Add the host as a participant
+    await addParticipantToSession(QuizSession.fromJson(response).id, true);
+    
     return QuizSession.fromJson(response);
+  }
+  
+  // Start a quiz session (from waiting room)
+  Future<void> startSessionQuiz(String sessionId) async {
+    if (currentUser == null) {
+      throw Exception('User must be logged in to start a quiz');
+    }
+    
+    await _client
+        .from('quiz_sessions')
+        .update({'has_started': true})
+        .eq('id', sessionId)
+        .eq('host_id', currentUser!.id);
+  }
+  
+  // Get participants for a session
+  Future<List<Map<String, dynamic>>> getParticipantsForSession(String sessionId) async {
+    final response = await _client
+        .from('session_participants')
+        .select('id, user_id, username, is_host, joined_at')
+        .eq('session_id', sessionId)
+        .order('joined_at');
+    
+    return response as List<Map<String, dynamic>>;
+  }
+  
+  // Add participant to session
+  Future<void> addParticipantToSession(String sessionId, [bool isHost = false]) async {
+    if (currentUser == null) {
+      throw Exception('User must be logged in to join a session');
+    }
+    
+    // Check if already a participant
+    final existing = await _client
+        .from('session_participants')
+        .select()
+        .eq('session_id', sessionId)
+        .eq('user_id', currentUser!.id)
+        .maybeSingle();
+    
+    if (existing != null) {
+      return; // Already a participant
+    }
+    
+    // Get user's email or default to Anon + first 4 chars of user ID
+    final userResponse = await _client.auth.getUser();
+    final email = userResponse.user?.email;
+    final username = email ?? 'Anon-${currentUser!.id.substring(0, 4)}';
+    
+    await _client.from('session_participants').insert({
+      'session_id': sessionId,
+      'user_id': currentUser!.id,
+      'username': username,
+      'is_host': isHost,
+    });
+  }
+  
+  // Subscribe to session events
+  Stream<Map<String, dynamic>> subscribeToSession(String joinCode) {
+    return _client
+        .from('quiz_sessions')
+        .stream(primaryKey: ['id'])
+        .eq('join_code', joinCode)
+        .map((event) => event.isNotEmpty ? event.first : {});
+  }
+  
+  // Subscribe to participants for a session
+  Stream<List<Map<String, dynamic>>> subscribeToParticipants(String sessionId) {
+    return _client
+        .from('session_participants')
+        .stream(primaryKey: ['id'])
+        .eq('session_id', sessionId)
+        .map((events) => events.map((e) => e as Map<String, dynamic>).toList());
+  }
+  
+  // Add the participant's score to the leaderboard
+  Future<void> addToLeaderboard(String sessionId, int score, int timeSpent) async {
+    if (currentUser == null) return;
+    
+    await _client.from('session_results').insert({
+      'session_id': sessionId,
+      'user_id': currentUser!.id,
+      'score': score,
+      'time_spent': timeSpent,
+      'completed_at': DateTime.now().toIso8601String(),
+    });
+  }
+  
+  // Get leaderboard for a session
+  Future<List<Map<String, dynamic>>> getLeaderboard(String sessionId) async {
+    final response = await _client
+        .from('session_results')
+        .select('*, session_participants(username, is_host)')
+        .eq('session_id', sessionId)
+        .order('score', ascending: false);
+    
+    return response as List<Map<String, dynamic>>;
   }
   
   Future<Map<String, dynamic>> getSessionWithQuizByCode(String joinCode) async {

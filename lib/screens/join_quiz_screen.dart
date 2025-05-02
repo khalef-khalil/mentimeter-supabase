@@ -38,15 +38,22 @@ class _JoinQuizScreenState extends State<JoinQuizScreen> {
       final result = await _supabaseService.getSessionWithQuizByCode(code);
       
       final session = result['session'];
-      final quiz = result['quiz'];
+      
+      // Add the user as a participant
+      await _supabaseService.addParticipantToSession(session.id);
       
       if (mounted) {
         setState(() {
           _isJoining = false;
         });
         
-        // Navigate to the quiz with the session join code
-        context.go('/quiz/${session.quizId}?session=${session.joinCode}');
+        // If the quiz has already started, go directly to the quiz screen
+        if (session.hasStarted) {
+          context.go('/quiz/${session.quizId}?session=${session.joinCode}');
+        } else {
+          // Otherwise, go to the waiting room
+          context.go('/waiting-room/${session.joinCode}');
+        }
       }
     } catch (e) {
       if (mounted) {

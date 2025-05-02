@@ -4,6 +4,7 @@ class QuizSession {
   final String? hostId;
   final String joinCode;
   final bool isActive;
+  final bool hasStarted;
   final DateTime createdAt;
   
   QuizSession({
@@ -12,6 +13,7 @@ class QuizSession {
     this.hostId,
     required this.joinCode,
     required this.isActive,
+    this.hasStarted = false,
     required this.createdAt,
   });
   
@@ -22,6 +24,7 @@ class QuizSession {
       hostId: json['host_id'],
       joinCode: json['join_code'],
       isActive: json['is_active'] ?? true,
+      hasStarted: json['has_started'] ?? false,
       createdAt: DateTime.parse(json['created_at']),
     );
   }
@@ -33,6 +36,7 @@ class QuizSession {
       'host_id': hostId,
       'join_code': joinCode,
       'is_active': isActive,
+      'has_started': hasStarted,
       'created_at': createdAt.toIso8601String(),
     };
   }

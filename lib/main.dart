@@ -14,6 +14,8 @@ import 'screens/stats_screen.dart';
 import 'screens/quiz_history_screen.dart';
 import 'screens/favorites_screen.dart';
 import 'screens/profile_screen.dart';
+import 'screens/waiting_room_screen.dart';
+import 'screens/leaderboard_screen.dart';
 import 'widgets/auth_wrapper.dart';
 import 'services/supabase_service.dart';
 import 'utils/logger.dart';
@@ -212,6 +214,28 @@ final _router = GoRouter(
         child: ProfileScreen(),
       ),
     ),
+    GoRoute(
+      path: '/waiting-room/:sessionCode',
+      builder: (context, state) {
+        final sessionCode = state.pathParameters['sessionCode']!;
+        final isHost = state.uri.queryParameters['host'] == 'true';
+        return WaitingRoomScreen(
+          sessionCode: sessionCode,
+          isHost: isHost,
+        );
+      },
+    ),
+    GoRoute(
+      path: '/leaderboard/:sessionId',
+      builder: (context, state) {
+        final sessionId = state.pathParameters['sessionId']!;
+        final isHost = state.uri.queryParameters['host'] == 'true';
+        return LeaderboardScreen(
+          sessionId: sessionId,
+          isHost: isHost,
+        );
+      },
+    ),
   ],
   redirect: (context, state) {
     // Check if the user is authenticated for routes that require auth
@@ -219,10 +243,13 @@ final _router = GoRouter(
     final isAuthRoute = state.fullPath == '/login';
     final isQuizRoute = state.fullPath?.startsWith('/quiz/') ?? false;
     final isJoinRoute = state.fullPath == '/join';
+    final isWaitingRoomRoute = state.fullPath?.startsWith('/waiting-room/') ?? false;
+    final isLeaderboardRoute = state.fullPath?.startsWith('/leaderboard/') ?? false;
     
     // If not authenticated and not on login route, redirect to login
     // Allow public quiz routes without authentication
-    if (!isAuthenticated && !isAuthRoute && !isQuizRoute && !isJoinRoute) {
+    if (!isAuthenticated && !isAuthRoute && !isQuizRoute && !isJoinRoute && 
+        !isWaitingRoomRoute && !isLeaderboardRoute) {
       return '/login';
     }
     
