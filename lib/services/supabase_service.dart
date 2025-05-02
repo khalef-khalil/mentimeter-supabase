@@ -203,17 +203,35 @@ class SupabaseService {
   }
   
   Future<Quiz> getQuiz(String id) async {
-    final response = await _client.from('quizzes').select().eq('id', id).single();
-    final quiz = Quiz.fromJson(response);
-    
-    if (currentUser != null) {
-      // Check if quiz is a favorite
-      final favorites = await getUserFavorites();
-      final isFavorite = favorites.any((f) => f.quizId == id);
-      return quiz.copyWith(isFavorite: isFavorite);
+    try {
+      final response = await _client
+          .from('quizzes')
+          .select()
+          .eq('id', id)
+          .maybeSingle();
+      
+      if (response == null) {
+        throw Exception('Quiz not found');
+      }
+      
+      final quiz = Quiz.fromJson(response);
+      
+      if (currentUser != null) {
+        // Check if quiz is a favorite
+        final favorites = await getUserFavorites();
+        final isFavorite = favorites.any((f) => f.quizId == id);
+        return quiz.copyWith(isFavorite: isFavorite);
+      }
+      
+      return quiz;
+    } catch (e) {
+      // Handle specific errors
+      if (e.toString().contains('not found')) {
+        throw Exception('Quiz not found');
+      }
+      // Re-throw the error with clearer message
+      throw Exception('Error loading quiz: $e');
     }
-    
-    return quiz;
   }
   
   Future<Quiz> createQuiz(
@@ -347,6 +365,13 @@ class SupabaseService {
       throw Exception('User must be logged in to host a quiz');
     }
     
+    // First, update the quiz to set it as active
+    await _client
+        .from('quizzes')
+        .update({'active': true})
+        .eq('id', quizId)
+        .eq('user_id', currentUser!.id);
+    
     // Call the database function to generate a join code
     final codeResponse = await _client.rpc('generate_join_code');
     final joinCode = codeResponse as String;
@@ -361,15 +386,67 @@ class SupabaseService {
     return QuizSession.fromJson(response);
   }
   
+  Future<Map<String, dynamic>> getSessionWithQuizByCode(String joinCode) async {
+    try {
+      // First get the session by join code
+      final sessionResponse = await _client
+          .from('quiz_sessions')
+          .select()
+          .eq('join_code', joinCode)
+          .eq('is_active', true)
+          .maybeSingle();
+      
+      if (sessionResponse == null) {
+        throw Exception('Session not found or not active');
+      }
+      
+      final session = QuizSession.fromJson(sessionResponse);
+      
+      // Then verify the quiz exists and is accessible
+      final quizResponse = await _client
+          .from('quizzes')
+          .select()
+          .eq('id', session.quizId)
+          .maybeSingle();
+      
+      if (quizResponse == null) {
+        throw Exception('Quiz not found or not accessible');
+      }
+      
+      // If we reach here, both the session and quiz exist
+      return {
+        'session': session,
+        'quiz': Quiz.fromJson(quizResponse)
+      };
+    } catch (e) {
+      if (e.toString().contains('Session not found')) {
+        throw Exception('Session not found or not active');
+      } else if (e.toString().contains('Quiz not found')) {
+        throw Exception('Quiz associated with this session is no longer available');
+      }
+      // Re-throw with more user-friendly message
+      throw Exception('Invalid or expired join code');
+    }
+  }
+  
   Future<QuizSession> getSessionByCode(String joinCode) async {
-    final response = await _client
-        .from('quiz_sessions')
-        .select()
-        .eq('join_code', joinCode)
-        .eq('is_active', true)
-        .single();
-    
-    return QuizSession.fromJson(response);
+    try {
+      final response = await _client
+          .from('quiz_sessions')
+          .select()
+          .eq('join_code', joinCode)
+          .eq('is_active', true)
+          .maybeSingle();
+      
+      if (response == null) {
+        throw Exception('Session not found or not active');
+      }
+      
+      return QuizSession.fromJson(response);
+    } catch (e) {
+      // Re-throw with more user-friendly message
+      throw Exception('Invalid or expired join code');
+    }
   }
   
   Future<List<QuizSession>> getUserActiveSessions() async {
@@ -386,6 +463,26 @@ class SupabaseService {
   }
   
   Future<void> endQuizSession(String sessionId) async {
+    // First, get the session to find its associated quiz
+    final sessionResponse = await _client
+        .from('quiz_sessions')
+        .select('quiz_id')
+        .eq('id', sessionId)
+        .eq('host_id', currentUser!.id)
+        .maybeSingle();
+    
+    if (sessionResponse != null) {
+      final quizId = sessionResponse['quiz_id'] as String;
+      
+      // Update the quiz to set it as inactive
+      await _client
+          .from('quizzes')
+          .update({'active': false})
+          .eq('id', quizId)
+          .eq('user_id', currentUser!.id);
+    }
+    
+    // Update the session to set it as inactive
     await _client
         .from('quiz_sessions')
         .update({'is_active': false})

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../services/supabase_service.dart';
+import '../widgets/app_scaffold.dart';
 
 class JoinQuizScreen extends StatefulWidget {
   const JoinQuizScreen({super.key});
@@ -33,7 +34,11 @@ class _JoinQuizScreenState extends State<JoinQuizScreen> {
     });
     
     try {
-      final session = await _supabaseService.getSessionByCode(code);
+      // Fetch both session and quiz in one call to ensure both exist and are valid
+      final result = await _supabaseService.getSessionWithQuizByCode(code);
+      
+      final session = result['session'];
+      final quiz = result['quiz'];
       
       if (mounted) {
         setState(() {
@@ -49,9 +54,18 @@ class _JoinQuizScreenState extends State<JoinQuizScreen> {
           _isJoining = false;
         });
         
+        String errorMessage = 'Invalid or expired join code. Please try again.';
+        
+        // Show a more specific error message if possible
+        if (e.toString().contains('Session not found')) {
+          errorMessage = 'This quiz session is no longer active or doesn\'t exist.';
+        } else if (e.toString().contains('Quiz not found') || e.toString().contains('no longer available')) {
+          errorMessage = 'The quiz associated with this code is not available.';
+        }
+        
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Invalid or expired join code. Please try again.'),
+          SnackBar(
+            content: Text(errorMessage),
             backgroundColor: Colors.red,
           ),
         );
@@ -61,13 +75,11 @@ class _JoinQuizScreenState extends State<JoinQuizScreen> {
   
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Join Quiz'),
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        foregroundColor: Colors.white,
-      ),
-      body: Container(
+    return AppScaffold(
+      title: 'Join Quiz',
+      showBottomNav: true,
+      currentIndex: 0,
+      child: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,

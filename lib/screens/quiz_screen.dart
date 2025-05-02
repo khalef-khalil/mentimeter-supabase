@@ -8,6 +8,7 @@ import '../models/quiz_attempt.dart';
 import '../services/supabase_service.dart';
 import '../widgets/multiple_choice_question.dart';
 import '../widgets/word_cloud_question.dart';
+import '../widgets/app_scaffold.dart';
 
 class QuizScreen extends StatefulWidget {
   final String quizId;
@@ -34,6 +35,7 @@ class _QuizScreenState extends State<QuizScreen> {
   Timer? _timer;
   int _timeRemaining = 0;
   int _correctAnswers = 0;
+  String? _error;
   
   @override
   void initState() {
@@ -53,20 +55,57 @@ class _QuizScreenState extends State<QuizScreen> {
     });
     
     try {
-      final quiz = await _supabaseService.getQuiz(widget.quizId);
-      final questions = await _supabaseService.getQuestionsForQuiz(widget.quizId);
-      
-      // If we have a session code, load the session
+      // If we have a session code, first verify the session and get quiz together
       if (widget.sessionCode != null) {
         try {
-          final session = await _supabaseService.getSessionByCode(widget.sessionCode!);
+          final result = await _supabaseService.getSessionWithQuizByCode(widget.sessionCode!);
+          final session = result['session'];
+          final quiz = result['quiz'];
+          
           setState(() {
             _session = session;
+            _quiz = quiz;
           });
+          
+          // Now get the questions
+          final questions = await _supabaseService.getQuestionsForQuiz(quiz.id);
+          
+          setState(() {
+            _questions = questions;
+            _isLoading = false;
+            
+            if (_questions.isNotEmpty) {
+              _startTimer();
+            }
+          });
+          
+          // Start tracking the quiz attempt
+          if (_supabaseService.currentUser != null) {
+            try {
+              final attempt = await _supabaseService.startQuizAttempt(
+                quiz.id, 
+                quiz.title, 
+                questions.length
+              );
+              setState(() {
+                _attempt = attempt;
+              });
+            } catch (e) {
+              // Failed to track attempt, continue without it
+              debugPrint('Failed to track quiz attempt: $e');
+            }
+          }
+          
+          return;  // Exit early as we've loaded everything we need
         } catch (e) {
-          // Session not found or expired, continue without it
+          // We couldn't load by session, continue to try loading by quiz ID directly
+          debugPrint('Error loading quiz by session: $e');
         }
       }
+      
+      // If we don't have a session code or loading by session failed, load normally
+      final quiz = await _supabaseService.getQuiz(widget.quizId);
+      final questions = await _supabaseService.getQuestionsForQuiz(widget.quizId);
       
       // Start tracking the quiz attempt
       if (_supabaseService.currentUser != null) {
@@ -97,10 +136,14 @@ class _QuizScreenState extends State<QuizScreen> {
     } catch (e) {
       setState(() {
         _isLoading = false;
+        _error = e.toString();
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading quiz: $e')),
+          SnackBar(
+            content: Text('Error loading quiz: ${e.toString().replaceAll('Exception: ', '')}'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
@@ -211,88 +254,121 @@ class _QuizScreenState extends State<QuizScreen> {
   
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(_quiz?.title ?? 'Quiz'),
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        foregroundColor: Colors.white,
-        actions: [
-          if (_session != null)
-            Container(
-              margin: const EdgeInsets.only(right: 16),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.person_pin_circle, size: 16),
-                  const SizedBox(width: 4),
-                  Text(_session!.joinCode),
-                ],
-              ),
+    return AppScaffold(
+      title: _quiz?.title ?? 'Quiz',
+      showBottomNav: true,
+      currentIndex: 0,
+      actions: [
+        if (_session != null)
+          Container(
+            margin: const EdgeInsets.only(right: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(16),
             ),
-        ],
-      ),
-      body: _isLoading
+            child: Row(
+              children: [
+                const Icon(Icons.person_pin_circle, size: 16),
+                const SizedBox(width: 4),
+                Text(_session!.joinCode),
+              ],
+            ),
+          ),
+      ],
+      child: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : _questions.isEmpty
-              ? const Center(child: Text('No questions available'))
-              : Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // Timer display
-                      if (_timeRemaining > 0) ...[
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(Icons.timer, color: Colors.red),
-                            const SizedBox(width: 8),
-                            Text(
-                              _formatTime(_timeRemaining),
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: _timeRemaining < 10 ? Colors.red : null,
-                              ),
-                            ),
-                          ],
+          : _error != null
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          Icons.error_outline,
+                          color: Colors.red,
+                          size: 64,
                         ),
                         const SizedBox(height: 16),
+                        Text(
+                          'Could not load quiz',
+                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          _error!.replaceAll('Exception: ', ''),
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: Colors.grey[700]),
+                        ),
+                        const SizedBox(height: 24),
+                        ElevatedButton.icon(
+                          onPressed: () => context.go('/'),
+                          icon: const Icon(Icons.home),
+                          label: const Text('Go to Home'),
+                        ),
                       ],
-                      
-                      // Progress and score display
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    ),
+                  ),
+                )
+              : _questions.isEmpty
+                  ? const Center(child: Text('No questions available'))
+                  : Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          Text(
-                            'Question: ${_currentQuestionIndex + 1}/${_questions.length}',
-                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          // Timer display
+                          if (_timeRemaining > 0) ...[
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.timer, color: Colors.red),
+                                const SizedBox(width: 8),
+                                Text(
+                                  _formatTime(_timeRemaining),
+                                  style: TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                    color: _timeRemaining < 10 ? Colors.red : null,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                          ],
+                          
+                          // Progress and score display
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Question: ${_currentQuestionIndex + 1}/${_questions.length}',
+                                style: const TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                              Text(
+                                'Score: $_correctAnswers',
+                                style: const TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                            ],
                           ),
-                          Text(
-                            'Score: $_correctAnswers',
-                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          const SizedBox(height: 8),
+                          
+                          // Progress bar
+                          LinearProgressIndicator(
+                            value: (_currentQuestionIndex + 1) / _questions.length,
+                            backgroundColor: Colors.grey[300],
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                          const SizedBox(height: 16),
+                          Expanded(
+                            child: _buildQuestionWidget(),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
-                      
-                      // Progress bar
-                      LinearProgressIndicator(
-                        value: (_currentQuestionIndex + 1) / _questions.length,
-                        backgroundColor: Colors.grey[300],
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                      const SizedBox(height: 16),
-                      Expanded(
-                        child: _buildQuestionWidget(),
-                      ),
-                    ],
-                  ),
-                ),
+                    ),
     );
   }
   
