@@ -182,16 +182,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               fontSize: 22,
             ),
           ),
-          actions: [
-            Padding(
-              padding: const EdgeInsets.only(right: 8.0),
-              child: IconButton(
-                icon: const Icon(Icons.login_rounded, size: 26),
-                onPressed: () => context.go('/join'),
-                tooltip: 'Join Quiz',
-              ),
-            ),
-          ],
           bottom: TabBar(
             controller: _tabController,
             tabs: const [
@@ -320,14 +310,31 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           ],
         ),
         floatingActionButton: _tabController.index == 0
-            ? FloatingActionButton.extended(
-                onPressed: () => context.go('/create'),
-                tooltip: 'Create a new quiz',
-                backgroundColor: Theme.of(context).colorScheme.secondary,
-                foregroundColor: Colors.white,
-                elevation: 4,
-                icon: const Icon(Icons.add),
-                label: const Text('Create Quiz'),
+            ? Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  FloatingActionButton.extended(
+                    onPressed: () => context.go('/join'),
+                    tooltip: 'Join a quiz with code',
+                    backgroundColor: Theme.of(context).colorScheme.primary,
+                    foregroundColor: Colors.white,
+                    elevation: 4,
+                    icon: const Icon(Icons.login_rounded),
+                    label: const Text('Join Quiz'),
+                    heroTag: 'joinQuiz',
+                  ),
+                  const SizedBox(width: 16),
+                  FloatingActionButton.extended(
+                    onPressed: () => context.go('/create'),
+                    tooltip: 'Create a new quiz',
+                    backgroundColor: Theme.of(context).colorScheme.secondary,
+                    foregroundColor: Colors.white,
+                    elevation: 4,
+                    icon: const Icon(Icons.add),
+                    label: const Text('Create Quiz'),
+                    heroTag: 'createQuiz',
+                  ),
+                ],
               )
             : null,
       ),
