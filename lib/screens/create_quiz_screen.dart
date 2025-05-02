@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../models/question.dart';
+import '../models/quiz.dart';
 import '../services/supabase_service.dart';
 import '../widgets/question_form.dart';
 
@@ -17,6 +18,8 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
   final List<Map<String, dynamic>> _questions = [];
   final SupabaseService _supabaseService = SupabaseService();
   bool _isCreating = false;
+  QuizDifficulty _difficulty = QuizDifficulty.medium;
+  QuizCategory _category = QuizCategory.general;
   
   @override
   void dispose() {
@@ -73,7 +76,11 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
     
     try {
       // Create quiz
-      final quiz = await _supabaseService.createQuiz(title);
+      final quiz = await _supabaseService.createQuiz(
+        title,
+        difficulty: _difficulty,
+        category: _category,
+      );
       
       // Create questions
       for (int i = 0; i < _questions.length; i++) {
@@ -137,6 +144,84 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
                         }
                         return null;
                       },
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: DropdownButtonFormField<QuizDifficulty>(
+                            value: _difficulty,
+                            decoration: const InputDecoration(
+                              labelText: 'Difficulty',
+                              border: OutlineInputBorder(),
+                            ),
+                            items: const [
+                              DropdownMenuItem(
+                                value: QuizDifficulty.easy,
+                                child: Text('Easy'),
+                              ),
+                              DropdownMenuItem(
+                                value: QuizDifficulty.medium,
+                                child: Text('Medium'),
+                              ),
+                              DropdownMenuItem(
+                                value: QuizDifficulty.hard,
+                                child: Text('Hard'),
+                              ),
+                            ],
+                            onChanged: (value) {
+                              setState(() {
+                                _difficulty = value!;
+                              });
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: DropdownButtonFormField<QuizCategory>(
+                            value: _category,
+                            decoration: const InputDecoration(
+                              labelText: 'Category',
+                              border: OutlineInputBorder(),
+                            ),
+                            items: QuizCategory.values.map((category) {
+                              String label;
+                              switch (category) {
+                                case QuizCategory.general:
+                                  label = 'General';
+                                  break;
+                                case QuizCategory.science:
+                                  label = 'Science';
+                                  break;
+                                case QuizCategory.history:
+                                  label = 'History';
+                                  break;
+                                case QuizCategory.geography:
+                                  label = 'Geography';
+                                  break;
+                                case QuizCategory.entertainment:
+                                  label = 'Entertainment';
+                                  break;
+                                case QuizCategory.sports:
+                                  label = 'Sports';
+                                  break;
+                                case QuizCategory.technology:
+                                  label = 'Technology';
+                                  break;
+                              }
+                              return DropdownMenuItem(
+                                value: category,
+                                child: Text(label),
+                              );
+                            }).toList(),
+                            onChanged: (value) {
+                              setState(() {
+                                _category = value!;
+                              });
+                            },
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 24),
                     const Text(

@@ -5,6 +5,7 @@ import '../models/question.dart';
 import '../models/response.dart';
 import '../models/quiz_session.dart';
 import '../models/quiz_attempt.dart';
+import '../models/quiz_favorite.dart';
 import '../utils/logger.dart';
 import '../main.dart';
 
@@ -62,36 +63,212 @@ class SupabaseService {
     return (response as List).map((json) => Quiz.fromJson(json)).toList();
   }
   
-  Future<List<Quiz>> getUserQuizzes() async {
+  Future<List<Quiz>> getUserQuizzes({
+    QuizDifficulty? difficulty,
+    QuizCategory? category,
+  }) async {
     if (currentUser == null) return [];
     
-    final response = await _client
+    var query = _client
         .from('quizzes')
         .select()
-        .eq('user_id', currentUser!.id)
-        .order('created_at');
-    return (response as List).map((json) => Quiz.fromJson(json)).toList();
+        .eq('user_id', currentUser!.id);
+    
+    if (difficulty != null) {
+      String difficultyStr;
+      switch (difficulty) {
+        case QuizDifficulty.easy:
+          difficultyStr = 'easy';
+          break;
+        case QuizDifficulty.medium:
+          difficultyStr = 'medium';
+          break;
+        case QuizDifficulty.hard:
+          difficultyStr = 'hard';
+          break;
+      }
+      query = query.eq('difficulty', difficultyStr);
+    }
+    
+    if (category != null) {
+      String categoryStr;
+      switch (category) {
+        case QuizCategory.general:
+          categoryStr = 'general';
+          break;
+        case QuizCategory.science:
+          categoryStr = 'science';
+          break;
+        case QuizCategory.history:
+          categoryStr = 'history';
+          break;
+        case QuizCategory.geography:
+          categoryStr = 'geography';
+          break;
+        case QuizCategory.entertainment:
+          categoryStr = 'entertainment';
+          break;
+        case QuizCategory.sports:
+          categoryStr = 'sports';
+          break;
+        case QuizCategory.technology:
+          categoryStr = 'technology';
+          break;
+      }
+      query = query.eq('category', categoryStr);
+    }
+    
+    final response = await query.order('created_at');
+    final quizzes = (response as List).map((json) => Quiz.fromJson(json)).toList();
+    
+    // Check if quizzes are favorites
+    final favorites = await getUserFavorites();
+    final favoriteIds = favorites.map((f) => f.quizId).toSet();
+    
+    return quizzes.map((quiz) {
+      if (favoriteIds.contains(quiz.id)) {
+        return quiz.copyWith(isFavorite: true);
+      }
+      return quiz;
+    }).toList();
   }
   
-  Future<List<Quiz>> getActiveQuizzes() async {
-    final response = await _client.from('quizzes').select().eq('active', true).order('created_at');
-    return (response as List).map((json) => Quiz.fromJson(json)).toList();
+  Future<List<Quiz>> getActiveQuizzes({
+    QuizDifficulty? difficulty,
+    QuizCategory? category,
+  }) async {
+    var query = _client.from('quizzes').select().eq('active', true);
+    
+    if (difficulty != null) {
+      String difficultyStr;
+      switch (difficulty) {
+        case QuizDifficulty.easy:
+          difficultyStr = 'easy';
+          break;
+        case QuizDifficulty.medium:
+          difficultyStr = 'medium';
+          break;
+        case QuizDifficulty.hard:
+          difficultyStr = 'hard';
+          break;
+      }
+      query = query.eq('difficulty', difficultyStr);
+    }
+    
+    if (category != null) {
+      String categoryStr;
+      switch (category) {
+        case QuizCategory.general:
+          categoryStr = 'general';
+          break;
+        case QuizCategory.science:
+          categoryStr = 'science';
+          break;
+        case QuizCategory.history:
+          categoryStr = 'history';
+          break;
+        case QuizCategory.geography:
+          categoryStr = 'geography';
+          break;
+        case QuizCategory.entertainment:
+          categoryStr = 'entertainment';
+          break;
+        case QuizCategory.sports:
+          categoryStr = 'sports';
+          break;
+        case QuizCategory.technology:
+          categoryStr = 'technology';
+          break;
+      }
+      query = query.eq('category', categoryStr);
+    }
+    
+    final response = await query.order('created_at');
+    final quizzes = (response as List).map((json) => Quiz.fromJson(json)).toList();
+    
+    // Check if quizzes are favorites for logged-in users
+    if (currentUser != null) {
+      final favorites = await getUserFavorites();
+      final favoriteIds = favorites.map((f) => f.quizId).toSet();
+      
+      return quizzes.map((quiz) {
+        if (favoriteIds.contains(quiz.id)) {
+          return quiz.copyWith(isFavorite: true);
+        }
+        return quiz;
+      }).toList();
+    }
+    
+    return quizzes;
   }
   
   Future<Quiz> getQuiz(String id) async {
     final response = await _client.from('quizzes').select().eq('id', id).single();
-    return Quiz.fromJson(response);
+    final quiz = Quiz.fromJson(response);
+    
+    if (currentUser != null) {
+      // Check if quiz is a favorite
+      final favorites = await getUserFavorites();
+      final isFavorite = favorites.any((f) => f.quizId == id);
+      return quiz.copyWith(isFavorite: isFavorite);
+    }
+    
+    return quiz;
   }
   
-  Future<Quiz> createQuiz(String title) async {
+  Future<Quiz> createQuiz(
+    String title, {
+    QuizDifficulty difficulty = QuizDifficulty.medium,
+    QuizCategory category = QuizCategory.general,
+  }) async {
     if (currentUser == null) {
       throw Exception('User must be logged in to create a quiz');
+    }
+    
+    String difficultyStr;
+    switch (difficulty) {
+      case QuizDifficulty.easy:
+        difficultyStr = 'easy';
+        break;
+      case QuizDifficulty.medium:
+        difficultyStr = 'medium';
+        break;
+      case QuizDifficulty.hard:
+        difficultyStr = 'hard';
+        break;
+    }
+    
+    String categoryStr;
+    switch (category) {
+      case QuizCategory.general:
+        categoryStr = 'general';
+        break;
+      case QuizCategory.science:
+        categoryStr = 'science';
+        break;
+      case QuizCategory.history:
+        categoryStr = 'history';
+        break;
+      case QuizCategory.geography:
+        categoryStr = 'geography';
+        break;
+      case QuizCategory.entertainment:
+        categoryStr = 'entertainment';
+        break;
+      case QuizCategory.sports:
+        categoryStr = 'sports';
+        break;
+      case QuizCategory.technology:
+        categoryStr = 'technology';
+        break;
     }
     
     final response = await _client.from('quizzes').insert({
       'title': title,
       'user_id': currentUser!.id,
       'active': false,
+      'difficulty': difficultyStr,
+      'category': categoryStr,
     }).select().single();
     
     return Quiz.fromJson(response);
@@ -99,6 +276,17 @@ class SupabaseService {
   
   Future<void> updateQuizActive(String id, bool active) async {
     await _client.from('quizzes').update({'active': active}).eq('id', id);
+  }
+  
+  Future<void> deleteQuiz(String id) async {
+    if (currentUser == null) {
+      throw Exception('User must be logged in to delete a quiz');
+    }
+    
+    await _client.from('quizzes')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', currentUser!.id);
   }
   
   // Question methods
@@ -277,5 +465,153 @@ class SupabaseService {
       'avg_score': avgScore,
       'highest_score': highestScore,
     };
+  }
+  
+  // Favorites methods
+  Future<List<QuizFavorite>> getUserFavorites() async {
+    if (currentUser == null) return [];
+    
+    final response = await _client
+        .from('quiz_favorites')
+        .select()
+        .eq('user_id', currentUser!.id);
+    
+    return (response as List).map((json) => QuizFavorite.fromJson(json)).toList();
+  }
+  
+  Future<List<Quiz>> getFavoriteQuizzes({
+    QuizDifficulty? difficulty,
+    QuizCategory? category,
+  }) async {
+    if (currentUser == null) return [];
+    
+    var query = '''
+      user_id=eq.${currentUser!.id}
+    ''';
+    
+    if (difficulty != null) {
+      String difficultyStr;
+      switch (difficulty) {
+        case QuizDifficulty.easy:
+          difficultyStr = 'easy';
+          break;
+        case QuizDifficulty.medium:
+          difficultyStr = 'medium';
+          break;
+        case QuizDifficulty.hard:
+          difficultyStr = 'hard';
+          break;
+      }
+      query += '&difficulty=eq.$difficultyStr';
+    }
+    
+    if (category != null) {
+      String categoryStr;
+      switch (category) {
+        case QuizCategory.general:
+          categoryStr = 'general';
+          break;
+        case QuizCategory.science:
+          categoryStr = 'science';
+          break;
+        case QuizCategory.history:
+          categoryStr = 'history';
+          break;
+        case QuizCategory.geography:
+          categoryStr = 'geography';
+          break;
+        case QuizCategory.entertainment:
+          categoryStr = 'entertainment';
+          break;
+        case QuizCategory.sports:
+          categoryStr = 'sports';
+          break;
+        case QuizCategory.technology:
+          categoryStr = 'technology';
+          break;
+      }
+      query += '&category=eq.$categoryStr';
+    }
+    
+    final response = await _client
+        .from('user_favorites_view')
+        .select()
+        .eq('user_id', currentUser!.id);
+    
+    final List<Quiz> quizzes = [];
+    for (final item in response) {
+      final quiz = Quiz(
+        id: item['quiz_id'],
+        title: item['quiz_title'],
+        createdAt: DateTime.parse(item['quiz_created_at']),
+        active: true, // These are always active since they are public
+        difficulty: _parseDifficulty(item['difficulty']),
+        category: _parseCategory(item['category']),
+        isFavorite: true,
+      );
+      quizzes.add(quiz);
+    }
+    
+    return quizzes;
+  }
+  
+  QuizDifficulty _parseDifficulty(String difficulty) {
+    switch (difficulty) {
+      case 'easy':
+        return QuizDifficulty.easy;
+      case 'hard':
+        return QuizDifficulty.hard;
+      default:
+        return QuizDifficulty.medium;
+    }
+  }
+  
+  QuizCategory _parseCategory(String category) {
+    switch (category) {
+      case 'science':
+        return QuizCategory.science;
+      case 'history':
+        return QuizCategory.history;
+      case 'geography':
+        return QuizCategory.geography;
+      case 'entertainment':
+        return QuizCategory.entertainment;
+      case 'sports':
+        return QuizCategory.sports;
+      case 'technology':
+        return QuizCategory.technology;
+      default:
+        return QuizCategory.general;
+    }
+  }
+  
+  Future<void> addFavorite(String quizId) async {
+    if (currentUser == null) {
+      throw Exception('User must be logged in to add a favorite');
+    }
+    
+    await _client.from('quiz_favorites').insert({
+      'quiz_id': quizId,
+      'user_id': currentUser!.id,
+    });
+  }
+  
+  Future<void> removeFavorite(String quizId) async {
+    if (currentUser == null) {
+      throw Exception('User must be logged in to remove a favorite');
+    }
+    
+    await _client.from('quiz_favorites')
+      .delete()
+      .eq('quiz_id', quizId)
+      .eq('user_id', currentUser!.id);
+  }
+  
+  Future<void> toggleFavorite(String quizId, bool isFavorite) async {
+    if (isFavorite) {
+      await removeFavorite(quizId);
+    } else {
+      await addFavorite(quizId);
+    }
   }
 } 

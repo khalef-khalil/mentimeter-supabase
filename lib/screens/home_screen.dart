@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../models/quiz.dart';
 import '../services/supabase_service.dart';
+import '../widgets/quiz_filter_bar.dart';
+import '../widgets/quiz_card.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -16,10 +18,14 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   List<Quiz> _quizzes = [];
   late TabController _tabController;
   
+  QuizDifficulty? _selectedDifficulty;
+  QuizCategory? _selectedCategory;
+  
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(_onTabChanged);
     _loadUserQuizzes();
   }
   
@@ -29,7 +35,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     });
     
     try {
-      final quizzes = await _supabaseService.getUserQuizzes();
+      final quizzes = await _supabaseService.getUserQuizzes(
+        difficulty: _selectedDifficulty,
+        category: _selectedCategory,
+      );
       setState(() {
         _quizzes = quizzes;
         _isLoading = false;
@@ -52,7 +61,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     });
     
     try {
-      final quizzes = await _supabaseService.getActiveQuizzes();
+      final quizzes = await _supabaseService.getActiveQuizzes(
+        difficulty: _selectedDifficulty,
+        category: _selectedCategory,
+      );
       setState(() {
         _quizzes = quizzes;
         _isLoading = false;
@@ -70,10 +82,67 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   }
   
   void _onTabChanged() {
+    setState(() {
+      // Reset filters when changing tabs
+      _selectedDifficulty = null;
+      _selectedCategory = null;
+    });
+    
     if (_tabController.index == 0) {
       _loadUserQuizzes();
     } else {
       _loadPublicQuizzes();
+    }
+  }
+  
+  void _applyFilters(QuizDifficulty? difficulty, QuizCategory? category) {
+    setState(() {
+      _selectedDifficulty = difficulty;
+      _selectedCategory = category;
+    });
+    
+    if (_tabController.index == 0) {
+      _loadUserQuizzes();
+    } else {
+      _loadPublicQuizzes();
+    }
+  }
+  
+  void _toggleFavorite(String quizId, bool isFavorite) async {
+    try {
+      await _supabaseService.toggleFavorite(quizId, isFavorite);
+      
+      // Refresh the list
+      if (_tabController.index == 0) {
+        _loadUserQuizzes();
+      } else {
+        _loadPublicQuizzes();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error updating favorite: $e')),
+        );
+      }
+    }
+  }
+  
+  Future<void> _deleteQuiz(String quizId) async {
+    try {
+      await _supabaseService.deleteQuiz(quizId);
+      _loadUserQuizzes();
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Quiz deleted successfully')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error deleting quiz: $e')),
+        );
+      }
     }
   }
   
@@ -94,6 +163,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   
   @override
   void dispose() {
+    _tabController.removeListener(_onTabChanged);
     _tabController.dispose();
     super.dispose();
   }
@@ -117,6 +187,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             tooltip: 'Quiz History',
           ),
           IconButton(
+            icon: const Icon(Icons.favorite),
+            onPressed: () => context.go('/favorites'),
+            tooltip: 'Favorite Quizzes',
+          ),
+          IconButton(
             icon: const Icon(Icons.login),
             onPressed: () => context.go('/join'),
             tooltip: 'Join Quiz',
@@ -129,7 +204,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         ],
         bottom: TabBar(
           controller: _tabController,
-          onTap: (_) => _onTabChanged(),
           tabs: const [
             Tab(text: 'My Quizzes'),
             Tab(text: 'Public Quizzes'),
@@ -137,24 +211,79 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           labelColor: Colors.white,
         ),
       ),
-      body: Stack(
+      body: Column(
         children: [
-          TabBarView(
-            controller: _tabController,
-            children: [
-              _buildQuizList(),
-              _buildQuizList(),
-            ],
+          QuizFilterBar(
+            onApplyFilters: _applyFilters,
+            initialDifficulty: _selectedDifficulty,
+            initialCategory: _selectedCategory,
           ),
-          if (_tabController.index == 1)
-            Positioned(
-              bottom: 80,
-              left: 0,
-              right: 0,
-              child: Center(
-                child: _buildJoinQuizButton(),
-              ),
-            ),
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _quizzes.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Text(
+                              'No quizzes found',
+                              style: TextStyle(fontSize: 18),
+                            ),
+                            const SizedBox(height: 8),
+                            if (_tabController.index == 0) ...[
+                              const Text(
+                                'Create your first quiz',
+                                style: TextStyle(color: Colors.grey),
+                              ),
+                              const SizedBox(height: 20),
+                              ElevatedButton(
+                                onPressed: () => context.go('/create'),
+                                child: const Text('Create Quiz'),
+                              ),
+                            ] else ...[
+                              const Text(
+                                'Try different filters or join a quiz with a code',
+                                style: TextStyle(color: Colors.grey),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 20),
+                              ElevatedButton.icon(
+                                onPressed: () => context.go('/join'),
+                                icon: const Icon(Icons.dialpad),
+                                label: const Text('Join with Code'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.amber.shade700,
+                                  foregroundColor: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      )
+                    : RefreshIndicator(
+                        onRefresh: _tabController.index == 0 
+                            ? _loadUserQuizzes 
+                            : _loadPublicQuizzes,
+                        child: ListView.builder(
+                          padding: const EdgeInsets.all(16),
+                          itemCount: _quizzes.length,
+                          itemBuilder: (context, index) {
+                            final quiz = _quizzes[index];
+                            return QuizCard(
+                              quiz: quiz,
+                              onFavoriteToggle: _toggleFavorite,
+                              onDelete: _tabController.index == 0
+                                  ? () => _deleteQuiz(quiz.id)
+                                  : null,
+                              onTap: _tabController.index == 0
+                                  ? () => context.go('/responses/${quiz.id}')
+                                  : () => context.go('/quiz/${quiz.id}'),
+                            );
+                          },
+                        ),
+                      ),
+          ),
         ],
       ),
       floatingActionButton: _tabController.index == 0 
@@ -163,127 +292,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               tooltip: 'Create Quiz',
               child: const Icon(Icons.add),
             )
-          : FloatingActionButton(
-              onPressed: () => context.go('/join'),
-              tooltip: 'Join with Code',
-              backgroundColor: Colors.amber,
-              child: const Icon(Icons.keyboard),
-            ),
+          : null,
     );
-  }
-  
-  Widget _buildJoinQuizButton() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 50),
-      child: ElevatedButton(
-        onPressed: () => context.go('/join'),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.amber.shade700,
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
-          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-        ),
-        child: const Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.dialpad),
-            SizedBox(width: 8),
-            Text('ENTER QUIZ CODE'),
-          ],
-        ),
-      ),
-    );
-  }
-  
-  Widget _buildQuizList() {
-    return _isLoading
-        ? const Center(child: CircularProgressIndicator())
-        : _quizzes.isEmpty
-            ? Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Text(
-                      'No quizzes yet',
-                      style: TextStyle(fontSize: 18),
-                    ),
-                    if (_tabController.index == 0) ...[
-                      const SizedBox(height: 20),
-                      ElevatedButton(
-                        onPressed: () => context.go('/create'),
-                        child: const Text('Create Quiz'),
-                      ),
-                    ] else ...[
-                      const SizedBox(height: 20),
-                      ElevatedButton.icon(
-                        onPressed: () => context.go('/join'),
-                        icon: const Icon(Icons.dialpad),
-                        label: const Text('Join with Code'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.amber.shade700,
-                          foregroundColor: Colors.white,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              )
-            : RefreshIndicator(
-                onRefresh: _tabController.index == 0 
-                    ? _loadUserQuizzes 
-                    : _loadPublicQuizzes,
-                child: ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _quizzes.length,
-                  itemBuilder: (context, index) {
-                    final quiz = _quizzes[index];
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: 16),
-                      child: ListTile(
-                        title: Text(
-                          quiz.title,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        subtitle: Text(
-                          'Created: ${quiz.createdAt.toString().substring(0, 16)}',
-                        ),
-                        trailing: _tabController.index == 0 ? Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.present_to_all),
-                              onPressed: () => context.go('/host/${quiz.id}'),
-                              tooltip: 'Host Quiz',
-                            ),
-                            Icon(
-                              quiz.active
-                                  ? Icons.visibility
-                                  : Icons.visibility_off,
-                              color: quiz.active ? Colors.green : Colors.grey,
-                            ),
-                            Switch(
-                              value: quiz.active,
-                              onChanged: (value) async {
-                                await _supabaseService.updateQuizActive(
-                                  quiz.id,
-                                  value,
-                                );
-                                _tabController.index == 0 
-                                    ? _loadUserQuizzes() 
-                                    : _loadPublicQuizzes();
-                              },
-                            ),
-                          ],
-                        ) : null,
-                        onTap: () => _tabController.index == 0
-                            ? context.go('/responses/${quiz.id}')
-                            : context.go('/quiz/${quiz.id}'),
-                      ),
-                    );
-                  },
-                ),
-              );
   }
 } 

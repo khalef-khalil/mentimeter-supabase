@@ -12,6 +12,7 @@ import 'screens/host_quiz_screen.dart';
 import 'screens/join_quiz_screen.dart';
 import 'screens/stats_screen.dart';
 import 'screens/quiz_history_screen.dart';
+import 'screens/favorites_screen.dart';
 import 'widgets/auth_wrapper.dart';
 import 'services/supabase_service.dart';
 import 'utils/logger.dart';
@@ -126,6 +127,12 @@ final _router = GoRouter(
       path: '/history',
       builder: (context, state) => AuthWrapper(
         child: const QuizHistoryScreen(),
+      ),
+    ),
+    GoRoute(
+      path: '/favorites',
+      builder: (context, state) => AuthWrapper(
+        child: const FavoritesScreen(),
       ),
     ),
   ],
