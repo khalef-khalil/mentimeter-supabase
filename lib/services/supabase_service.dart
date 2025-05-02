@@ -396,11 +396,31 @@ class SupabaseService {
       throw Exception('User must be logged in to start a quiz');
     }
     
-    await _client
+    print('Starting quiz session: $sessionId, host: ${currentUser!.id}');
+    
+    // Verify session exists and user is host
+    final sessionCheck = await _client
+        .from('quiz_sessions')
+        .select()
+        .eq('id', sessionId)
+        .eq('host_id', currentUser!.id)
+        .maybeSingle();
+        
+    if (sessionCheck == null) {
+      print('Session not found or user is not host');
+      throw Exception('Session not found or you are not the host');
+    }
+    
+    print('Session found, updating has_started to true');
+
+    // Update the session to set it as started
+    final response = await _client
         .from('quiz_sessions')
         .update({'has_started': true})
         .eq('id', sessionId)
         .eq('host_id', currentUser!.id);
+    
+    print('Session update response: $response');
   }
   
   // Get participants for a session

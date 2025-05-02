@@ -30,17 +30,18 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
   bool _quizStarted = false;
   String? _error;
   StreamSubscription? _sessionSubscription;
+  StreamSubscription? _participantsSubscription;
   
   @override
   void initState() {
     super.initState();
     _loadSessionAndQuiz();
-    _setupRealtimeSubscription();
   }
   
   @override
   void dispose() {
     _sessionSubscription?.cancel();
+    _participantsSubscription?.cancel();
     super.dispose();
   }
   
@@ -62,6 +63,9 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
         _participants = participants;
         _isLoading = false;
       });
+      
+      // Set up real-time subscriptions after we have the session ID
+      _setupRealtimeSubscription();
     } catch (e) {
       setState(() {
         _isLoading = false;
@@ -80,32 +84,56 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
   }
   
   void _setupRealtimeSubscription() {
-    // Subscribe to changes in the participants table
+    // Subscribe to changes in the session
     _sessionSubscription = _supabaseService.subscribeToSession(widget.sessionCode)
       .listen((event) {
-        if (event['has_started'] == true && !_quizStarted) {
+        if (event.isNotEmpty && event['has_started'] == true && !_quizStarted) {
+          print('Quiz has started, navigating to quiz screen');
           setState(() {
             _quizStarted = true;
           });
           
           // Navigate to the quiz screen
-          if (mounted) {
+          if (mounted && _quiz != null) {
             context.go('/quiz/${_quiz!.id}?session=${widget.sessionCode}');
           }
         }
-        
-        _loadSessionAndQuiz(); // Refresh participants list
+      });
+      
+    // Also subscribe to participants changes
+    _participantsSubscription = _supabaseService.subscribeToParticipants(_session?.id ?? '')
+      .listen((participants) {
+        if (mounted && _session != null) {
+          print('Received participants update: ${participants.length} participants');
+          setState(() {
+            _participants = participants;
+          });
+        }
       });
   }
   
   Future<void> _startQuiz() async {
-    if (!widget.isHost || _session == null) return;
+    if (!widget.isHost || _session == null) {
+      print('Cannot start quiz: isHost=${widget.isHost}, session=${_session != null}');
+      return;
+    }
     
     try {
+      print('Starting quiz for session: ${_session!.id}');
       await _supabaseService.startSessionQuiz(_session!.id);
+      print('Quiz started successfully');
       
-      // The navigation will be handled by the realtime subscription
+      // For immediate feedback, update the local state
+      setState(() {
+        _quizStarted = true;
+      });
+      
+      // Navigate directly instead of waiting for the subscription
+      if (mounted && _quiz != null) {
+        context.go('/quiz/${_quiz!.id}?session=${widget.sessionCode}');
+      }
     } catch (e) {
+      print('Error starting quiz: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error starting quiz: $e')),
