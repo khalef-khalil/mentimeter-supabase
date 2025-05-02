@@ -33,10 +33,18 @@ class _QuestionFormState extends State<QuestionForm> {
     _optionControllers = (widget.initialData['options'] as List<dynamic>? ?? [])
         .map((option) => TextEditingController(text: option.toString()))
         .toList();
-    _correctOption = widget.initialData['correctOption'];
     
     if (_optionControllers.isEmpty && _questionType == QuestionType.multipleChoice) {
       _optionControllers = [TextEditingController(), TextEditingController()];
+    }
+    
+    // Initialize correctOption only if it's a non-empty string and matches one of the options
+    final initialCorrectOption = widget.initialData['correctOption'];
+    if (initialCorrectOption != null && initialCorrectOption.isNotEmpty) {
+      final optionTexts = _optionControllers.map((c) => c.text).toList();
+      if (optionTexts.contains(initialCorrectOption)) {
+        _correctOption = initialCorrectOption;
+      }
     }
   }
   
@@ -68,12 +76,14 @@ class _QuestionFormState extends State<QuestionForm> {
   }
   
   void _removeOption(int index) {
+    final removedOptionText = _optionControllers[index].text;
+    
     setState(() {
       _optionControllers[index].dispose();
       _optionControllers.removeAt(index);
       
       // If the removed option was the correct answer, reset the correct answer
-      if (_correctOption == _optionControllers[index].text) {
+      if (_correctOption == removedOptionText) {
         _correctOption = null;
       }
     });
@@ -213,32 +223,53 @@ class _QuestionFormState extends State<QuestionForm> {
                 label: const Text('Add Option'),
               ),
               const SizedBox(height: 16),
-              DropdownButtonFormField<String>(
-                value: _correctOption,
-                decoration: const InputDecoration(
-                  labelText: 'Correct Answer',
-                  border: OutlineInputBorder(),
-                  hintText: 'Select the correct answer',
-                ),
-                items: _optionControllers.map((controller) {
-                  final option = controller.text;
-                  return DropdownMenuItem(
-                    value: option.isNotEmpty ? option : null,
-                    child: Text(option.isNotEmpty ? option : 'No option selected'),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  setState(() {
-                    _correctOption = value;
-                  });
-                  _notifyChange();
-                },
-                validator: (value) {
-                  if (_questionType == QuestionType.multipleChoice && value == null) {
-                    return 'Please select the correct answer';
+              // Modified dropdown to handle empty options
+              Builder(
+                builder: (context) {
+                  // Get valid options (non-empty)
+                  final validOptions = _optionControllers
+                      .map((c) => c.text)
+                      .where((text) => text.isNotEmpty)
+                      .toList();
+                      
+                  // If no valid options or current selection isn't in valid options, set to null
+                  if (validOptions.isEmpty || (_correctOption != null && !validOptions.contains(_correctOption))) {
+                    _correctOption = null;
                   }
-                  return null;
-                },
+                  
+                  return validOptions.isEmpty 
+                      ? const Padding(
+                          padding: EdgeInsets.only(bottom: 8.0),
+                          child: Text('Add options above to select a correct answer'),
+                        ) 
+                      : DropdownButtonFormField<String>(
+                          value: _correctOption,
+                          decoration: const InputDecoration(
+                            labelText: 'Correct Answer',
+                            border: OutlineInputBorder(),
+                            hintText: 'Select the correct answer',
+                          ),
+                          items: validOptions.map((option) {
+                            return DropdownMenuItem(
+                              value: option,
+                              child: Text(option),
+                            );
+                          }).toList(),
+                          onChanged: (value) {
+                            setState(() {
+                              _correctOption = value;
+                            });
+                            _notifyChange();
+                          },
+                          validator: (value) {
+                            if (_questionType == QuestionType.multipleChoice && 
+                                validOptions.isNotEmpty && value == null) {
+                              return 'Please select the correct answer';
+                            }
+                            return null;
+                          },
+                        );
+                }
               ),
             ],
           ],
