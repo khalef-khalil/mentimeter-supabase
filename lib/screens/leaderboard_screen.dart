@@ -206,8 +206,25 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
                               itemCount: _leaderboardEntries.length,
                               itemBuilder: (context, index) {
                                 final entry = _leaderboardEntries[index];
-                                final username = entry['session_participants']['username'] ?? 'Anonymous';
-                                final isHost = entry['session_participants']['is_host'] ?? false;
+                                
+                                // Handle both the new view format and the old join format
+                                final String username;
+                                final bool isHost;
+                                
+                                if (entry.containsKey('username')) {
+                                  // New view format
+                                  username = entry['username'] ?? 'Anonymous';
+                                  isHost = entry['is_host'] ?? false;
+                                } else if (entry.containsKey('session_participants')) {
+                                  // Old join format
+                                  username = entry['session_participants']['username'] ?? 'Anonymous';
+                                  isHost = entry['session_participants']['is_host'] ?? false;
+                                } else {
+                                  // Fallback
+                                  username = 'Participant ${index + 1}';
+                                  isHost = false;
+                                }
+                                
                                 final score = entry['score'] as int;
                                 final timeSpent = entry['time_spent'] as int;
                                 final position = index + 1;

@@ -467,20 +467,43 @@ class SupabaseService {
   
   // Subscribe to session events
   Stream<Map<String, dynamic>> subscribeToSession(String joinCode) {
-    return _client
-        .from('quiz_sessions')
-        .stream(primaryKey: ['id'])
-        .eq('join_code', joinCode)
-        .map((event) => event.isNotEmpty ? event.first : {});
+    try {
+      print('Subscribing to session with join code: $joinCode');
+      return _client
+          .from('quiz_sessions')
+          .stream(primaryKey: ['id'])
+          .eq('join_code', joinCode)
+          .map((events) {
+            print('Received session event: $events');
+            return events.isNotEmpty ? events.first : <String, dynamic>{};
+          });
+    } catch (e) {
+      print('Error subscribing to session: $e');
+      return Stream.value(<String, dynamic>{});
+    }
   }
   
   // Subscribe to participants for a session
   Stream<List<Map<String, dynamic>>> subscribeToParticipants(String sessionId) {
-    return _client
-        .from('session_participants')
-        .stream(primaryKey: ['id'])
-        .eq('session_id', sessionId)
-        .map((events) => events.map((e) => e as Map<String, dynamic>).toList());
+    if (sessionId.isEmpty) {
+      print('Invalid session ID for participants subscription');
+      return Stream.value([]);
+    }
+    
+    try {
+      print('Subscribing to participants for session: $sessionId');
+      return _client
+          .from('session_participants')
+          .stream(primaryKey: ['id'])
+          .eq('session_id', sessionId)
+          .map((events) {
+            print('Received participants event: ${events.length} participants');
+            return events.map((e) => e as Map<String, dynamic>).toList();
+          });
+    } catch (e) {
+      print('Error subscribing to participants: $e');
+      return Stream.value([]);
+    }
   }
   
   // Add the participant's score to the leaderboard
@@ -498,13 +521,25 @@ class SupabaseService {
   
   // Get leaderboard for a session
   Future<List<Map<String, dynamic>>> getLeaderboard(String sessionId) async {
-    final response = await _client
-        .from('session_results')
-        .select('*, session_participants(username, is_host)')
-        .eq('session_id', sessionId)
-        .order('score', ascending: false);
-    
-    return response as List<Map<String, dynamic>>;
+    try {
+      final response = await _client
+          .from('session_results_with_participants')
+          .select()
+          .eq('session_id', sessionId)
+          .order('score', ascending: false);
+      
+      return response as List<Map<String, dynamic>>;
+    } catch (e) {
+      print('Error fetching leaderboard: $e');
+      // Fallback to the old method if the view doesn't exist yet
+      final response = await _client
+          .from('session_results')
+          .select('*, session_participants(username, is_host)')
+          .eq('session_id', sessionId)
+          .order('score', ascending: false);
+      
+      return response as List<Map<String, dynamic>>;
+    }
   }
   
   Future<Map<String, dynamic>> getSessionWithQuizByCode(String joinCode) async {

@@ -56,6 +56,17 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
       final quiz = result['quiz'];
       
       final participants = await _supabaseService.getParticipantsForSession(session.id);
+
+      print('Session loaded: ${session.id}, has_started: ${session.hasStarted}');
+      
+      // If the quiz has already started, navigate directly to the quiz screen
+      if (session.hasStarted) {
+        print('Quiz has already started, navigating directly');
+        if (mounted) {
+          context.go('/quiz/${quiz.id}?session=${widget.sessionCode}');
+          return;
+        }
+      }
       
       setState(() {
         _session = session;
@@ -64,9 +75,14 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
         _isLoading = false;
       });
       
+      // Cancel any existing subscriptions before setting up new ones
+      _sessionSubscription?.cancel();
+      _participantsSubscription?.cancel();
+      
       // Set up real-time subscriptions after we have the session ID
       _setupRealtimeSubscription();
     } catch (e) {
+      print('Error loading session: $e');
       setState(() {
         _isLoading = false;
         _error = e.toString();
@@ -84,9 +100,19 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
   }
   
   void _setupRealtimeSubscription() {
+    if (_session == null) {
+      print('Cannot set up subscriptions: Session is null');
+      return;
+    }
+
+    print('Setting up realtime subscriptions for session: ${_session!.id}');
+    
     // Subscribe to changes in the session
     _sessionSubscription = _supabaseService.subscribeToSession(widget.sessionCode)
       .listen((event) {
+        print('Session update received: $event');
+        
+        // Check if the quiz has started
         if (event.isNotEmpty && event['has_started'] == true && !_quizStarted) {
           print('Quiz has started, navigating to quiz screen');
           setState(() {
@@ -101,9 +127,9 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
       });
       
     // Also subscribe to participants changes
-    _participantsSubscription = _supabaseService.subscribeToParticipants(_session?.id ?? '')
+    _participantsSubscription = _supabaseService.subscribeToParticipants(_session!.id)
       .listen((participants) {
-        if (mounted && _session != null) {
+        if (mounted) {
           print('Received participants update: ${participants.length} participants');
           setState(() {
             _participants = participants;

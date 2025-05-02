@@ -4,6 +4,7 @@ import '../models/quiz.dart';
 import '../models/question.dart';
 import '../models/response.dart';
 import '../services/supabase_service.dart';
+import '../widgets/app_scaffold.dart';
 
 class QuizResponsesScreen extends StatefulWidget {
   final String quizId;
@@ -62,36 +63,39 @@ class _QuizResponsesScreenState extends State<QuizResponsesScreen> {
   
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(_quiz?.title ?? 'Quiz Responses'),
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        foregroundColor: Colors.white,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.share),
-            onPressed: () {
-              final url = Uri.base.toString().replaceAll('/responses/${widget.quizId}', '/quiz/${widget.quizId}');
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Share this link: $url'),
-                  action: SnackBarAction(
-                    label: 'Copy',
-                    onPressed: () {
-                      // In a real app, you would copy to clipboard here
-                    },
-                  ),
+    return AppScaffold(
+      title: _quiz?.title ?? 'Quiz Responses',
+      showBottomNav: true,
+      currentIndex: 0,
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.share),
+          onPressed: () {
+            final url = Uri.base.toString().replaceAll('/responses/${widget.quizId}', '/quiz/${widget.quizId}');
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Share this link: $url'),
+                action: SnackBarAction(
+                  label: 'Copy',
+                  onPressed: () {
+                    // In a real app, you would copy to clipboard here
+                  },
                 ),
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadData,
-          ),
-        ],
-      ),
-      body: _isLoading
+              ),
+            );
+          },
+        ),
+        IconButton(
+          icon: const Icon(Icons.refresh),
+          onPressed: _loadData,
+        ),
+        IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.go('/'),
+          tooltip: 'Back to Home',
+        ),
+      ],
+      child: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _questions.isEmpty
               ? const Center(child: Text('No questions available'))
