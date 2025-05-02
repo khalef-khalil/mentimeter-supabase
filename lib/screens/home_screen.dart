@@ -4,6 +4,7 @@ import '../models/quiz.dart';
 import '../services/supabase_service.dart';
 import '../widgets/quiz_filter_bar.dart';
 import '../widgets/quiz_card.dart';
+import '../widgets/app_scaffold.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -170,129 +171,109 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Mencimeter'),
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        foregroundColor: Colors.white,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.bar_chart),
-            onPressed: () => context.go('/stats'),
-            tooltip: 'Your Stats',
-          ),
-          IconButton(
-            icon: const Icon(Icons.history),
-            onPressed: () => context.go('/history'),
-            tooltip: 'Quiz History',
-          ),
-          IconButton(
-            icon: const Icon(Icons.favorite),
-            onPressed: () => context.go('/favorites'),
-            tooltip: 'Favorite Quizzes',
-          ),
-          IconButton(
-            icon: const Icon(Icons.login),
-            onPressed: () => context.go('/join'),
-            tooltip: 'Join Quiz',
-          ),
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: _logout,
-            tooltip: 'Logout',
-          ),
-        ],
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: const [
-            Tab(text: 'My Quizzes'),
-            Tab(text: 'Public Quizzes'),
+    return AppScaffold(
+      currentIndex: 0,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Mencimeter'),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.login),
+              onPressed: () => context.go('/join'),
+              tooltip: 'Join Quiz',
+            ),
           ],
-          labelColor: Colors.white,
-        ),
-      ),
-      body: Column(
-        children: [
-          QuizFilterBar(
-            onApplyFilters: _applyFilters,
-            initialDifficulty: _selectedDifficulty,
-            initialCategory: _selectedCategory,
+          bottom: TabBar(
+            controller: _tabController,
+            tabs: const [
+              Tab(text: 'My Quizzes'),
+              Tab(text: 'Public Quizzes'),
+            ],
+            labelColor: Colors.white,
           ),
-          Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _quizzes.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Text(
-                              'No quizzes found',
-                              style: TextStyle(fontSize: 18),
-                            ),
-                            const SizedBox(height: 8),
-                            if (_tabController.index == 0) ...[
+        ),
+        body: Column(
+          children: [
+            QuizFilterBar(
+              onApplyFilters: _applyFilters,
+              initialDifficulty: _selectedDifficulty,
+              initialCategory: _selectedCategory,
+            ),
+            Expanded(
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _quizzes.isEmpty
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
                               const Text(
-                                'Create your first quiz',
-                                style: TextStyle(color: Colors.grey),
+                                'No quizzes found',
+                                style: TextStyle(fontSize: 18),
                               ),
-                              const SizedBox(height: 20),
-                              ElevatedButton(
-                                onPressed: () => context.go('/create'),
-                                child: const Text('Create Quiz'),
-                              ),
-                            ] else ...[
-                              const Text(
-                                'Try different filters or join a quiz with a code',
-                                style: TextStyle(color: Colors.grey),
-                                textAlign: TextAlign.center,
-                              ),
-                              const SizedBox(height: 20),
-                              ElevatedButton.icon(
-                                onPressed: () => context.go('/join'),
-                                icon: const Icon(Icons.dialpad),
-                                label: const Text('Join with Code'),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.amber.shade700,
-                                  foregroundColor: Colors.white,
+                              const SizedBox(height: 8),
+                              if (_tabController.index == 0) ...[
+                                const Text(
+                                  'Create your first quiz',
+                                  style: TextStyle(color: Colors.grey),
                                 ),
-                              ),
+                                const SizedBox(height: 20),
+                                ElevatedButton(
+                                  onPressed: () => context.go('/create'),
+                                  child: const Text('Create Quiz'),
+                                ),
+                              ] else ...[
+                                const Text(
+                                  'Try different filters or join a quiz with a code',
+                                  style: TextStyle(color: Colors.grey),
+                                  textAlign: TextAlign.center,
+                                ),
+                                const SizedBox(height: 20),
+                                ElevatedButton(
+                                  onPressed: () => context.go('/join'),
+                                  child: const Text('Join Quiz with Code'),
+                                ),
+                              ],
                             ],
-                          ],
-                        ),
-                      )
-                    : RefreshIndicator(
-                        onRefresh: _tabController.index == 0 
-                            ? _loadUserQuizzes 
-                            : _loadPublicQuizzes,
-                        child: ListView.builder(
+                          ),
+                        )
+                      : ListView.builder(
                           padding: const EdgeInsets.all(16),
                           itemCount: _quizzes.length,
                           itemBuilder: (context, index) {
                             final quiz = _quizzes[index];
                             return QuizCard(
                               quiz: quiz,
-                              onFavoriteToggle: _toggleFavorite,
+                              onToggleFavorite: (quizId, isFavorite) => 
+                                _toggleFavorite(quizId, isFavorite),
+                              onTap: () {
+                                if (_tabController.index == 0) {
+                                  context.go('/host/${quiz.id}');
+                                } else {
+                                  context.go('/quiz/${quiz.id}');
+                                }
+                              },
                               onDelete: _tabController.index == 0
                                   ? () => _deleteQuiz(quiz.id)
                                   : null,
-                              onTap: _tabController.index == 0
+                              onViewResponses: _tabController.index == 0
                                   ? () => context.go('/responses/${quiz.id}')
-                                  : () => context.go('/quiz/${quiz.id}'),
+                                  : null,
                             );
                           },
                         ),
-                      ),
-          ),
-        ],
+            ),
+          ],
+        ),
+        floatingActionButton: _tabController.index == 0
+            ? FloatingActionButton(
+                onPressed: () => context.go('/create'),
+                tooltip: 'Create a new quiz',
+                backgroundColor: Theme.of(context).colorScheme.secondary,
+                child: const Icon(Icons.add),
+              )
+            : null,
       ),
-      floatingActionButton: _tabController.index == 0 
-          ? FloatingActionButton(
-              onPressed: () => context.go('/create'),
-              tooltip: 'Create Quiz',
-              child: const Icon(Icons.add),
-            )
-          : null,
     );
   }
 } 

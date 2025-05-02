@@ -4,6 +4,7 @@ import '../models/quiz.dart';
 import '../services/supabase_service.dart';
 import '../widgets/quiz_filter_bar.dart';
 import '../widgets/quiz_card.dart';
+import '../widgets/app_scaffold.dart';
 
 class FavoritesScreen extends StatefulWidget {
   const FavoritesScreen({super.key});
@@ -75,13 +76,10 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
   
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Favorite Quizzes'),
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        foregroundColor: Colors.white,
-      ),
-      body: Column(
+    return AppScaffold(
+      title: 'Favorite Quizzes',
+      currentIndex: 1,
+      child: Column(
         children: [
           QuizFilterBar(
             onApplyFilters: _applyFilters,
@@ -123,20 +121,18 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                           ],
                         ),
                       )
-                    : RefreshIndicator(
-                        onRefresh: _loadFavorites,
-                        child: ListView.builder(
-                          padding: const EdgeInsets.all(16),
-                          itemCount: _quizzes.length,
-                          itemBuilder: (context, index) {
-                            final quiz = _quizzes[index];
-                            return QuizCard(
-                              quiz: quiz,
-                              onFavoriteToggle: _toggleFavorite,
-                              onTap: () => context.go('/quiz/${quiz.id}'),
-                            );
-                          },
-                        ),
+                    : ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: _quizzes.length,
+                        itemBuilder: (context, index) {
+                          final quiz = _quizzes[index];
+                          return QuizCard(
+                            quiz: quiz,
+                            onToggleFavorite: (quizId, isFavorite) => 
+                              _toggleFavorite(quizId, isFavorite),
+                            onTap: () => context.go('/quiz/${quiz.id}'),
+                          );
+                        },
                       ),
           ),
         ],

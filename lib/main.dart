@@ -13,6 +13,7 @@ import 'screens/join_quiz_screen.dart';
 import 'screens/stats_screen.dart';
 import 'screens/quiz_history_screen.dart';
 import 'screens/favorites_screen.dart';
+import 'screens/profile_screen.dart';
 import 'widgets/auth_wrapper.dart';
 import 'services/supabase_service.dart';
 import 'utils/logger.dart';
@@ -54,8 +55,37 @@ class MencimeterApp extends StatelessWidget {
     return MaterialApp.router(
       title: 'Mencimeter',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.blue,
+          brightness: Brightness.light,
+          primary: Colors.blue.shade700,
+          secondary: Colors.orangeAccent,
+        ),
         useMaterial3: true,
+        appBarTheme: AppBarTheme(
+          elevation: 0,
+          backgroundColor: Colors.blue.shade700,
+          foregroundColor: Colors.white,
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            elevation: 2,
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          ),
+        ),
+        cardTheme: CardTheme(
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        inputDecorationTheme: InputDecorationTheme(
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+          filled: true,
+          fillColor: Colors.grey.shade50,
+        ),
       ),
       routerConfig: _router,
     );
@@ -133,6 +163,12 @@ final _router = GoRouter(
       path: '/favorites',
       builder: (context, state) => AuthWrapper(
         child: const FavoritesScreen(),
+      ),
+    ),
+    GoRoute(
+      path: '/profile',
+      builder: (context, state) => AuthWrapper(
+        child: ProfileScreen(),
       ),
     ),
   ],

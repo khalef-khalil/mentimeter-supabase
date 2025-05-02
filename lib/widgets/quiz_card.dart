@@ -3,17 +3,19 @@ import '../models/quiz.dart';
 
 class QuizCard extends StatelessWidget {
   final Quiz quiz;
-  final Function(String, bool) onFavoriteToggle;
+  final Function(String, bool) onToggleFavorite;
   final VoidCallback? onTap;
   final VoidCallback? onDelete;
+  final VoidCallback? onViewResponses;
   final bool showActions;
   
   const QuizCard({
     super.key,
     required this.quiz,
-    required this.onFavoriteToggle,
+    required this.onToggleFavorite,
     this.onTap,
     this.onDelete,
+    this.onViewResponses,
     this.showActions = true,
   });
   
@@ -105,7 +107,7 @@ class QuizCard extends StatelessWidget {
                         quiz.isFavorite ? Icons.favorite : Icons.favorite_border,
                         color: quiz.isFavorite ? Colors.red : null,
                       ),
-                      onPressed: () => onFavoriteToggle(quiz.id, quiz.isFavorite),
+                      onPressed: () => onToggleFavorite(quiz.id, !quiz.isFavorite),
                       tooltip: quiz.isFavorite ? 'Remove from favorites' : 'Add to favorites',
                     ),
                     if (onDelete != null)
@@ -138,6 +140,13 @@ class QuizCard extends StatelessWidget {
                         },
                         tooltip: 'Delete quiz',
                         color: Colors.red,
+                      ),
+                    if (onViewResponses != null)
+                      IconButton(
+                        icon: const Icon(Icons.bar_chart),
+                        onPressed: onViewResponses,
+                        tooltip: 'View responses',
+                        color: Colors.blue,
                       ),
                   ],
                 ],
