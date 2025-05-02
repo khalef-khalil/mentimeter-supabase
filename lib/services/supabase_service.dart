@@ -609,9 +609,9 @@ class SupabaseService {
   
   Future<void> toggleFavorite(String quizId, bool isFavorite) async {
     if (isFavorite) {
-      await removeFavorite(quizId);
-    } else {
       await addFavorite(quizId);
+    } else {
+      await removeFavorite(quizId);
     }
   }
 } 
